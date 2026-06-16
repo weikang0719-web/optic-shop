@@ -1223,6 +1223,10 @@ def search():
             <button type="button">Export Excel</button>
         </a>
 
+        <a href="/export-pdf">
+            <button type="button">Export PDF</button>
+        </a>
+
 
     </form>
 
@@ -1325,6 +1329,10 @@ def export_excel():
         download_name="Detailed_Report.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+@app.route("/export-pdf")
+def export_pdf():
+    return "PDF Export Working"
 
 @app.route("/logout")
 def logout():

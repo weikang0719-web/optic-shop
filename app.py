@@ -1,6 +1,6 @@
 from flask import send_file
 from io import BytesIO
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from reportlab.pdfgen import canvas
 from flask import Flask, request, session, redirect
 from datetime import datetime
@@ -1124,6 +1124,28 @@ def reports():
                     <p>Download all sales, expenses and salary data</p>
                 </a>
 
+                <form action="/restore-backup"
+                      method="POST"
+                      enctype="multipart/form-data"
+                      class="report-card">
+
+                    <h2>Restore Backup</h2>
+
+                    <p>Upload backup Excel and restore data</p>
+
+                    <input type="file"
+                           name="backup_file"
+                           accept=".xlsx"
+                           required>
+
+                    <br><br>
+
+                    <button type="submit">
+                        Restore Data
+                    </button>
+
+                </form>
+
             </div>
 
             <a href="/" class="back">Back to Dashboard</a>
@@ -1399,6 +1421,92 @@ def backup_excel():
         download_name="optic_shop_backup.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+@app.route("/restore-backup", methods=["POST"])
+def restore_backup():
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    file = request.files.get("backup_file")
+
+    if not file:
+        return "No backup file uploaded"
+
+    wb = load_workbook(file)
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    try:
+        # Clear old data
+        c.execute("DELETE FROM sales")
+        c.execute("DELETE FROM expenses")
+        c.execute("DELETE FROM salaries")
+
+        # Restore Sales
+        if "Sales" in wb.sheetnames:
+            ws = wb["Sales"]
+
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or not row[1]:
+                    continue
+
+                date = row[1]
+                customer = row[2]
+                amount = row[3]
+                staff = row[4]
+
+                c.execute("""
+                    INSERT INTO sales (date, customer, amount, staff)
+                    VALUES (%s, %s, %s, %s)
+                """, (date, customer, amount, staff))
+
+        # Restore Expenses
+        if "Expenses" in wb.sheetnames:
+            ws = wb["Expenses"]
+
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or not row[1]:
+                    continue
+
+                date = row[1]
+                category = row[2]
+                amount = row[3]
+                note = row[4]
+
+                c.execute("""
+                    INSERT INTO expenses (date, category, amount, note)
+                    VALUES (%s, %s, %s, %s)
+                """, (date, category, amount, note))
+
+        # Restore Salaries
+        if "Salaries" in wb.sheetnames:
+            ws = wb["Salaries"]
+
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or not row[1]:
+                    continue
+
+                date = row[1]
+                staff = row[2]
+                amount = row[3]
+                month = row[4]
+
+                c.execute("""
+                    INSERT INTO salaries (date, staff, amount, month)
+                    VALUES (%s, %s, %s, %s)
+                """, (date, staff, amount, month))
+
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return f"Restore failed: {e}"
+
+    conn.close()
+
+    return redirect("/reports")
 
 @app.route("/export-pdf")
 def export_pdf():

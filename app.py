@@ -1317,6 +1317,10 @@ def export_excel():
 
     conn.close()
 
+    for row in ws.iter_rows(min_row=2, min_col=4, max_col=4):
+        for cell in row:
+            cell.number_format = '#,##0.00'
+
     output = BytesIO()
 
     wb.save(output)
@@ -1363,7 +1367,7 @@ def export_pdf():
         p.drawString(
             50,
             y,
-            f"{str(r[0])[:10]} | {r[1]} | Staff: {r[3]} | RM {r[2]}"
+            f"{str(r[0])[:10]} | {r[1]} | Staff: {r[3]} | RM {float(r[2]):,.2f}"
         )
         y -= 15
 
@@ -1387,7 +1391,7 @@ def export_pdf():
         p.drawString(
             50,
             y,
-            f"{str(r[0])[:10]} | {r[1]} | {r[3]} | RM {r[2]}"
+            f"{str(r[0])[:10]} | {r[1]} | Staff: {r[3]} | RM {float(r[2]):,.2f}"
         )
         y -= 15
 
@@ -1411,7 +1415,7 @@ def export_pdf():
         p.drawString(
             50,
             y,
-            f"{str(r[0])[:10]} | {r[1]} | {r[3]} | RM {r[2]}"
+            f"{str(r[0])[:10]} | {r[1]} | Staff: {r[3]} | RM {float(r[2]):,.2f}"
         )
         y -= 15
 

@@ -1346,30 +1346,45 @@ def export_pdf():
 
     y = 800
 
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, y, "OPTIC SHOP REPORT")
-
-    y -= 40
-
-    p.setFont("Helvetica", 10)
-
-    # SALES
-    p.drawString(50, y, "SALES")
-    y -= 20
-
     c.execute("""
         SELECT date, customer, amount, staff
         FROM sales
         ORDER BY date DESC
     """)
 
+    p.setFont("Courier", 10)
+
+    p.drawString(50, y, "-" * 90)
+    y -= 15
+
+    p.drawString(
+    50,
+    y,
+    f"{'Date':<12}{'Customer':<25}{'Staff':<15}{'Amount':>15}"
+    )
+
+    y -= 15
+
+    p.drawString(50, y, "-" * 90)
+    y -= 15
+
     for r in c.fetchall():
-        p.drawString(
-            50,
-            y,
-            f"{str(r[0])[:10]} | {r[1]} | Staff: {r[3]} | RM {float(r[2]):,.2f}"
+
+        line = (
+            f"{str(r[0])[:10]:<12}"
+            f"{str(r[1])[:25]}"
+            f"{str(r[3])[:15]}"
+            f"{float(r[2]):>15,.2f}"
         )
-        y -= 15
+
+    p.drawString(50, y, line)
+
+    y -= 15
+
+    if y < 80:
+        p.showPage()
+        y = 800
+        p.setFont("Courier", 10)
 
         if y < 80:
             p.showPage()

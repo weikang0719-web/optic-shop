@@ -1119,6 +1119,11 @@ def reports():
                     <p>View sales, expenses and salary details together</p>
                 </a>
 
+                <a href="/backup-excel" class="report-card">
+                    <h2>Backup Data</h2>
+                    <p>Download all sales, expenses and salary data</p>
+                </a>
+
             </div>
 
             <a href="/" class="back">Back to Dashboard</a>
@@ -1338,6 +1343,60 @@ def export_excel():
         output,
         as_attachment=True,
         download_name="Detailed_Report.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@app.route("/backup-excel")
+def backup_excel():
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    wb = Workbook()
+
+    # Sales Sheet
+    ws = wb.active
+    ws.title = "Sales"
+    ws.append(["ID", "Date", "Customer", "Amount", "Staff"])
+
+    c.execute("SELECT id, date, customer, amount, staff FROM sales ORDER BY date DESC")
+    for r in c.fetchall():
+        ws.append([r[0], str(r[1])[:10], r[2], float(r[3]), r[4]])
+
+    # Expenses Sheet
+    ws2 = wb.create_sheet("Expenses")
+    ws2.append(["ID", "Date", "Category", "Amount", "Note"])
+
+    c.execute("SELECT id, date, category, amount, note FROM expenses ORDER BY date DESC")
+    for r in c.fetchall():
+        ws2.append([r[0], str(r[1])[:10], r[2], float(r[3]), r[4]])
+
+    # Salaries Sheet
+    ws3 = wb.create_sheet("Salaries")
+    ws3.append(["ID", "Date", "Staff", "Amount", "Month"])
+
+    c.execute("SELECT id, date, staff, amount, month FROM salaries ORDER BY date DESC")
+    for r in c.fetchall():
+        ws3.append([r[0], str(r[1])[:10], r[2], float(r[3]), r[4]])
+
+    conn.close()
+
+    # Format amount columns
+    for sheet in [ws, ws2, ws3]:
+        for row in sheet.iter_rows(min_row=2, min_col=4, max_col=4):
+            for cell in row:
+                cell.number_format = '#,##0.00'
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="optic_shop_backup.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 

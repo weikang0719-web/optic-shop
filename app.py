@@ -1341,10 +1341,34 @@ def export_pdf():
     c = conn.cursor()
 
     buffer = BytesIO()
-
     p = canvas.Canvas(buffer)
 
     y = 800
+
+    p.setFont("Helvetica-Bold", 18)
+    p.drawString(50, y, "OPTIC SHOP REPORT")
+
+    y -= 40
+
+    # SALES
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, "SALES")
+
+    y -= 20
+
+    p.setFont("Courier", 10)
+
+    p.drawString(
+        50,
+        y,
+        f"{'Date':<12}{'Customer':<25}{'Staff':<15}{'Amount':>15}"
+    )
+
+    y -= 15
+
+    p.drawString(50, y, "-" * 90)
+
+    y -= 15
 
     c.execute("""
         SELECT date, customer, amount, staff
@@ -1352,49 +1376,40 @@ def export_pdf():
         ORDER BY date DESC
     """)
 
-    p.setFont("Courier", 10)
-
-    p.drawString(50, y, "-" * 90)
-    y -= 15
-
-    p.drawString(
-    50,
-    y,
-    f"{'Date':<12}{'Customer':<25}{'Staff':<15}{'Amount':>15}"
-    )
-
-    y -= 15
-
-    p.drawString(50, y, "-" * 90)
-    y -= 15
-
     for r in c.fetchall():
 
         line = (
             f"{str(r[0])[:10]:<12}"
             f"{str(r[1])[:25]}"
-            f"{str(r[3])[:15]}"
+            f"{str(r[3]):<15}"
             f"{float(r[2]):>15,.2f}"
         )
 
-    p.drawString(50, y, line)
+        p.drawString(50, y, line)
+
+        y -= 15
+
+    y -= 25
+
+    # EXPENSES
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, "EXPENSES")
+
+    y -= 20
+
+    p.setFont("Courier", 10)
+
+    p.drawString(
+        50,
+        y,
+        f"{'Date':<12}{'Category':<25}{'Note':<25}{'Amount':>15}"
+    )
 
     y -= 15
 
-    if y < 80:
-        p.showPage()
-        y = 800
-        p.setFont("Courier", 10)
+    p.drawString(50, y, "-" * 90)
 
-        if y < 80:
-            p.showPage()
-            y = 800
-
-    y -= 20
-
-    # EXPENSES
-    p.drawString(50, y, "EXPENSES")
-    y -= 20
+    y -= 15
 
     c.execute("""
         SELECT date, category, amount, note
@@ -1403,22 +1418,39 @@ def export_pdf():
     """)
 
     for r in c.fetchall():
-        p.drawString(
-            50,
-            y,
-            f"{str(r[0])[:10]} | {r[1]} | Staff: {r[3]} | RM {float(r[2]):,.2f}"
+
+        line = (
+            f"{str(r[0])[:10]:<12}"
+            f"{str(r[1])[:25]}"
+            f"{str(r[3]):<25}"
+            f"{float(r[2]):>15,.2f}"
         )
+
+        p.drawString(50, y, line)
+
         y -= 15
 
-        if y < 80:
-            p.showPage()
-            y = 800
-
-    y -= 20
+    y -= 25
 
     # SALARIES
+    p.setFont("Helvetica-Bold", 12)
     p.drawString(50, y, "SALARIES")
+
     y -= 20
+
+    p.setFont("Courier", 10)
+
+    p.drawString(
+        50,
+        y,
+        f"{'Date':<12}{'Staff':<25}{'Month':<15}{'Amount':>15}"
+    )
+
+    y -= 15
+
+    p.drawString(50, y, "-" * 90)
+
+    y -= 15
 
     c.execute("""
         SELECT date, staff, amount, month
@@ -1427,16 +1459,49 @@ def export_pdf():
     """)
 
     for r in c.fetchall():
-        p.drawString(
-            50,
-            y,
-            f"{str(r[0])[:10]} | {r[1]} | Staff: {r[3]} | RM {float(r[2]):,.2f}"
+
+        line = (
+            f"{str(r[0])[:10]:<12}"
+            f"{str(r[1])[:25]}"
+            f"{str(r[3]):<15}"
+            f"{float(r[2]):>15,.2f}"
         )
+
+        p.drawString(50, y, line)
+
         y -= 15
 
-        if y < 80:
-            p.showPage()
-            y = 800
+    # SUMMARY
+    c.execute("SELECT COALESCE(SUM(amount),0) FROM sales")
+    total_sales = c.fetchone()[0]
+
+    c.execute("SELECT COALESCE(SUM(amount),0) FROM expenses")
+    total_expenses = c.fetchone()[0]
+
+    c.execute("SELECT COALESCE(SUM(amount),0) FROM salaries")
+    total_salary = c.fetchone()[0]
+
+    profit = total_sales - total_expenses - total_salary
+
+    y -= 40
+
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, "SUMMARY")
+
+    y -= 20
+
+    p.setFont("Helvetica", 10)
+
+    p.drawString(50, y, f"Total Sales     : RM {total_sales:,.2f}")
+    y -= 15
+
+    p.drawString(50, y, f"Total Expenses  : RM {total_expenses:,.2f}")
+    y -= 15
+
+    p.drawString(50, y, f"Total Salaries  : RM {total_salary:,.2f}")
+    y -= 15
+
+    p.drawString(50, y, f"Net Profit      : RM {profit:,.2f}")
 
     conn.close()
 

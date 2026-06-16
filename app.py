@@ -1164,13 +1164,17 @@ def reports():
             toast.innerHTML = "✅ Backup restored successfully!";
 
             toast.style.position = "fixed";
-            toast.style.top = "20px";
-            toast.style.right = "20px";
+            toast.style.top = "50px";
+            toast.style.right = "50px";
+            toast.style.transform = "translate(-50%, -50%)";
+            
             toast.style.background = "#28a745";
             toast.style.color = "white";
-            toast.style.padding = "15px 25px";
-            toast.style.borderRadius = "8px";
+            toast.style.padding = "20px 40px";
+            toast.style.borderRadius = "12px";
             toast.style.fontWeight = "bold";
+            toast.style.fontSize = "20px";
+            toast.style.boxShadow = "0 5px 20px rgba(0,0,0,0,3)";
             toast.style.zIndex = "9999";
 
             document.body.appendChild(toast);

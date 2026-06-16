@@ -1332,7 +1332,105 @@ def export_excel():
 
 @app.route("/export-pdf")
 def export_pdf():
-    return "PDF Export Working"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    buffer = BytesIO()
+
+    p = canvas.Canvas(buffer)
+
+    y = 800
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, y, "OPTIC SHOP REPORT")
+
+    y -= 40
+
+    p.setFont("Helvetica", 10)
+
+    # SALES
+    p.drawString(50, y, "SALES")
+    y -= 20
+
+    c.execute("""
+        SELECT date, customer, amount, staff
+        FROM sales
+        ORDER BY date DESC
+    """)
+
+    for r in c.fetchall():
+        p.drawString(
+            50,
+            y,
+            f"{str(r[0])[:10]} | {r[1]} | Staff: {r[3]} | RM {r[2]}"
+        )
+        y -= 15
+
+        if y < 80:
+            p.showPage()
+            y = 800
+
+    y -= 20
+
+    # EXPENSES
+    p.drawString(50, y, "EXPENSES")
+    y -= 20
+
+    c.execute("""
+        SELECT date, category, amount, note
+        FROM expenses
+        ORDER BY date DESC
+    """)
+
+    for r in c.fetchall():
+        p.drawString(
+            50,
+            y,
+            f"{str(r[0])[:10]} | {r[1]} | {r[3]} | RM {r[2]}"
+        )
+        y -= 15
+
+        if y < 80:
+            p.showPage()
+            y = 800
+
+    y -= 20
+
+    # SALARIES
+    p.drawString(50, y, "SALARIES")
+    y -= 20
+
+    c.execute("""
+        SELECT date, staff, amount, month
+        FROM salaries
+        ORDER BY date DESC
+    """)
+
+    for r in c.fetchall():
+        p.drawString(
+            50,
+            y,
+            f"{str(r[0])[:10]} | {r[1]} | {r[3]} | RM {r[2]}"
+        )
+        y -= 15
+
+        if y < 80:
+            p.showPage()
+            y = 800
+
+    conn.close()
+
+    p.save()
+
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="Detailed_Report.pdf",
+        mimetype="application/pdf"
+    )
 
 @app.route("/logout")
 def logout():

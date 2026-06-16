@@ -999,6 +999,22 @@ def report():
 def reports():
     if not session.get("logged_in"):
         return redirect("/login")
+    
+    message = ""
+
+    if request.args.get("msg") == "restore_success":
+        message = """
+        <div style="
+            background:#d4edda;
+            color:#155724;
+            padding:12px;
+            border-radius:8px;
+            margin-bottom:15px;
+            font-weight:bold;
+        ">
+            ✅ Backup restored successfully!
+        </div>
+        """
 
     return """
     <!DOCTYPE html>
@@ -1086,6 +1102,8 @@ def reports():
 
     <body>
         <div class="container">
+
+        {message}
 
             <div class="header">
                 <h1>Reports</h1>
@@ -1506,7 +1524,7 @@ def restore_backup():
 
     conn.close()
 
-    return redirect("/reports")
+    return redirect("/reports?msg=restore_success")
 
 @app.route("/export-pdf")
 def export_pdf():

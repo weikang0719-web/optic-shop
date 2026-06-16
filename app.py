@@ -1361,7 +1361,7 @@ def export_pdf():
     p.drawString(
         50,
         y,
-        f"{'Date':<12}{'Customer':<25}{'Staff':<15}{'Amount':>15}"
+        f"{'Date':<12}{'Customer':<35}{'Staff':<12}{'Amount':>15}"
     )
 
     y -= 15
@@ -1380,8 +1380,8 @@ def export_pdf():
 
         line = (
             f"{str(r[0])[:10]:<12}"
-            f"{str(r[1])[:25]}"
-            f"{str(r[3]):<15}"
+            f"{str(r[1])[:35]}"
+            f"{str(r[3]):<12}"
             f"{float(r[2]):>15,.2f}"
         )
 
@@ -1402,7 +1402,7 @@ def export_pdf():
     p.drawString(
         50,
         y,
-        f"{'Date':<12}{'Category':<25}{'Note':<25}{'Amount':>15}"
+        f"{'Date':<12}{'Category':<25}{'Note':<35}{'Amount':>15}"
     )
 
     y -= 15
@@ -1443,7 +1443,7 @@ def export_pdf():
     p.drawString(
         50,
         y,
-        f"{'Date':<12}{'Staff':<25}{'Month':<15}{'Amount':>15}"
+        f"{'Date':<12}{'Staff':<35}{'Month':<12}{'Amount':>15}"
     )
 
     y -= 15

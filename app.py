@@ -999,22 +999,6 @@ def report():
 def reports():
     if not session.get("logged_in"):
         return redirect("/login")
-    
-    message = ""
-
-    if request.args.get("msg") == "restore_success":
-        message = """
-        <div style="
-            background:#d4edda;
-            color:#155724;
-            padding:12px;
-            border-radius:8px;
-            margin-bottom:15px;
-            font-weight:bold;
-        ">
-            ✅ Backup restored successfully!
-        </div>
-        """
 
     return """
     <!DOCTYPE html>
@@ -1103,8 +1087,6 @@ def reports():
     <body>
         <div class="container">
 
-        {message}
-
             <div class="header">
                 <h1>Reports</h1>
                 <p>View sales, expenses, salary and financial reports</p>
@@ -1169,6 +1151,40 @@ def reports():
             <a href="/" class="back">Back to Dashboard</a>
 
         </div>
+    
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (urlParams.get("msg") === "restore_success") {
+
+            const toast = document.createElement("div");
+
+            toast.innerHTML = "✅ Backup restored successfully!";
+
+            toast.style.position = "fixed";
+            toast.style.top = "20px";
+            toast.style.right = "20px";
+            toast.style.background = "#28a745";
+            toast.style.color = "white";
+            toast.style.padding = "15px 25px";
+            toast.style.borderRadius = "8px";
+            toast.style.fontWeight = "bold";
+            toast.style.zIndex = "9999";
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+
+            window.history.replaceState({}, document.title, "/reports");
+        }
+
+    });
+    </script>
+
     </body>
     </html>
     """

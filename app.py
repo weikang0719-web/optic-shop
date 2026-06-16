@@ -2,11 +2,18 @@ from flask import send_file
 from io import BytesIO
 from openpyxl import Workbook
 from reportlab.pdfgen import canvas
-
 from flask import Flask, request, session, redirect
 from datetime import datetime
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Spacer,
+    Paragraph
+)
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 import calendar
-
 import sqlite3
 import os
 import psycopg2
@@ -1341,137 +1348,131 @@ def export_pdf():
     c = conn.cursor()
 
     buffer = BytesIO()
-    p = canvas.Canvas(buffer)
 
-    y = 800
+    doc = SimpleDocTemplate(buffer)
 
-    p.setFont("Helvetica-Bold", 18)
-    p.drawString(50, y, "OPTIC SHOP REPORT")
+    styles = getSampleStyleSheet()
 
-    y -= 40
+    elements = []
 
-    # SALES
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, y, "SALES")
-
-    y -= 20
-
-    p.setFont("Courier", 10)
-
-    p.drawString(
-        50,
-        y,
-        f"{'Date':<12}{'Customer':<35}{'Staff':<12}{'Amount':>15}"
+    title = Paragraph(
+        "<b>OPTIC SHOP REPORT</b>",
+        styles["Title"]
     )
 
-    y -= 15
-
-    p.drawString(50, y, "-" * 90)
-
-    y -= 15
+    elements.append(title)
+    elements.append(Spacer(1,20))
+    elements.append(
+        Paragraph("<b>SALES</b>", styles["Heading2"])
+    )
 
     c.execute("""
-        SELECT date, customer, amount, staff
+        SELECT date, customer, staff, amount
         FROM sales
         ORDER BY date DESC
     """)
 
+    sales_data = [
+        ["Date","Customer","Staff","Amount"]
+    ]
+
     for r in c.fetchall():
 
-        line = (
-            f"{str(r[0])[:10]:<12}"
-            f"{str(r[1])[:35]}"
-            f"{str(r[3]):<12}"
-            f"{float(r[2]):>15,.2f}"
-        )
+        sales_data.append([
+            str(r[0])[:10],
+            r[1],
+            r[2],
+            f"{float(r[3]):,.2f}"
+        ])
 
-        p.drawString(50, y, line)
-
-        y -= 15
-
-    y -= 25
-
-    # EXPENSES
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, y, "EXPENSES")
-
-    y -= 20
-
-    p.setFont("Courier", 10)
-
-    p.drawString(
-        50,
-        y,
-        f"{'Date':<12}{'Category':<25}{'Note':<35}{'Amount':>15}"
+    sales_table = Table(
+        sales_data,
+        colWidths=[90,220,80,100]
     )
 
-    y -= 15
+    sales_table.setStyle(TableStyle([
+        ('GRID',(0,0),(-1,-1),1,colors.black),
+        ('BACKGROUND',(0,0),(-1,0),colors.lightgrey),
+        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
+        ('ALIGN',(3,1),(3,-1),'RIGHT')
+    ]))
 
-    p.drawString(50, y, "-" * 90)
-
-    y -= 15
+    elements.append(sales_table)
+    elements.append(Spacer(1,20))
+    elements.append(
+        Paragraph("<b>EXPENSES</b>", styles["Heading2"])
+    )
 
     c.execute("""
-        SELECT date, category, amount, note
+        SELECT date, category, note, amount
         FROM expenses
         ORDER BY date DESC
     """)
 
+    expense_data = [
+        ["Date","Category","Note","Amount"]
+    ]
+
     for r in c.fetchall():
 
-        line = (
-            f"{str(r[0])[:10]:<12}"
-            f"{str(r[1])[:25]}"
-            f"{str(r[3]):<25}"
-            f"{float(r[2]):>15,.2f}"
-        )
+        expense_data.append([
+            str(r[0])[:10],
+            r[1],
+            r[2],
+            f"{float(r[3]):,.2f}"
+        ])
 
-        p.drawString(50, y, line)
-
-        y -= 15
-
-    y -= 25
-
-    # SALARIES
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, y, "SALARIES")
-
-    y -= 20
-
-    p.setFont("Courier", 10)
-
-    p.drawString(
-        50,
-        y,
-        f"{'Date':<12}{'Staff':<35}{'Month':<12}{'Amount':>15}"
+    expense_table = Table(
+        expense_data,
+        colWidths=[90,140,180,80]
     )
 
-    y -= 15
+    expense_table.setStyle(TableStyle([
+        ('GRID',(0,0),(-1,-1),1,colors.black),
+        ('BACKGROUND',(0,0),(-1,0),colors.lightgrey),
+        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
+        ('ALIGN',(3,1),(3,-1),'RIGHT')
+    ]))
 
-    p.drawString(50, y, "-" * 90)
-
-    y -= 15
+    elements.append(expense_table)
+    elements.append(Spacer(1,20))
+    elements.append(
+        Paragraph("<b>SALARIES</b>", styles["Heading2"])
+    )
 
     c.execute("""
-        SELECT date, staff, amount, month
+        SELECT date, staff, month, amount
         FROM salaries
         ORDER BY date DESC
     """)
 
+    salary_data = [
+        ["Date","Staff","Month","Amount"]
+    ]
+
     for r in c.fetchall():
 
-        line = (
-            f"{str(r[0])[:10]:<12}"
-            f"{str(r[1])[:25]}"
-            f"{str(r[3]):<15}"
-            f"{float(r[2]):>15,.2f}"
-        )
+        salary_data.append([
+            str(r[0])[:10],
+            r[1],
+            r[2],
+            f"{float(r[3]):,.2f}"
+        ])
 
-        p.drawString(50, y, line)
+    salary_table = Table(
+        salary_data,
+        colWidths=[90,220,100,80]
+    )
 
-        y -= 15
+    salary_table.setStyle(TableStyle([
+        ('GRID',(0,0),(-1,-1),1,colors.black),
+        ('BACKGROUND',(0,0),(-1,0),colors.lightgrey),
+        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
+        ('ALIGN',(3,1),(3,-1),'RIGHT')
+    ]))
 
-    # SUMMARY
+    elements.append(salary_table)
+
     c.execute("SELECT COALESCE(SUM(amount),0) FROM sales")
     total_sales = c.fetchone()[0]
 
@@ -1483,29 +1484,30 @@ def export_pdf():
 
     profit = total_sales - total_expenses - total_salary
 
-    y -= 40
+    elements.append(Spacer(1,25))
 
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, y, "SUMMARY")
+    summary = [
+        ["Total Sales", f"RM {total_sales:,.2f}"],
+        ["Total Expenses", f"RM {total_expenses:,.2f}"],
+        ["Total Salary", f"RM {total_salary:,.2f}"],
+        ["Net Profit", f"RM {profit:,.2f}"]
+    ]
 
-    y -= 20
+    summary_table = Table(
+        summary,
+        colWidths=[180,180]
+    )
 
-    p.setFont("Helvetica", 10)
+    summary_table.setStyle(TableStyle([
+        ('GRID',(0,0),(-1,-1),1,colors.black),
+        ('FONTNAME',(0,0),(-1,-1),'Helvetica-Bold')
+    ]))
 
-    p.drawString(50, y, f"Total Sales     : RM {total_sales:,.2f}")
-    y -= 15
+    elements.append(summary_table)
 
-    p.drawString(50, y, f"Total Expenses  : RM {total_expenses:,.2f}")
-    y -= 15
-
-    p.drawString(50, y, f"Total Salaries  : RM {total_salary:,.2f}")
-    y -= 15
-
-    p.drawString(50, y, f"Net Profit      : RM {profit:,.2f}")
+    doc.build(elements)
 
     conn.close()
-
-    p.save()
 
     buffer.seek(0)
 

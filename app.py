@@ -481,6 +481,8 @@ def home():
         menu_html += '<a href="/permissions"><button>Permissions</button></a>'
         menu_html += '<a href="/companies"><button>Companies</button></a>'
 
+    menu_html += '<a href="/support"><button>Report Problem</button></a>'
+    
     menu_html += '<a href="/logout"><button>Logout</button></a>'
 
     return f"""

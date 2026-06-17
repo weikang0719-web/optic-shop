@@ -84,12 +84,29 @@ init_db()
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
 
-        if username == "admin" and password == "1234":
+        conn = get_conn()
+        c = conn.cursor()
+
+        c.execute("""
+            SELECT username, role
+            FROM users
+            WHERE username = %s AND password = %s
+        """, (username, password))
+
+        user = c.fetchone()
+
+        conn.close()
+
+        if user:
             session["logged_in"] = True
+            session["username"] = user[0]
+            session["role"] = user[1]
+
             return redirect("/")
         else:
             return """
@@ -99,8 +116,8 @@ def login():
             """
 
     return """
-<!DOCTYPE html>
-<html>
+    <!DOCTYPE html>
+    <html>
 <head>
 <title>Login</title>
 <style>

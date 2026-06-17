@@ -2605,6 +2605,121 @@ def admin_dashboard():
     </ul>
     """
 
+@app.route("/support", methods=["GET", "POST"])
+def support():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    if request.method == "POST":
+
+        subject = request.form["subject"]
+        description = request.form["description"]
+
+        conn = get_conn()
+        c = conn.cursor()
+
+        c.execute("""
+        INSERT INTO support_tickets
+        (company_code, username, subject, description)
+        VALUES (%s, %s, %s, %s)
+        """, (
+            session["company_code"],
+            session["username"],
+            subject,
+            description
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return """
+        <h2>Ticket Submitted</h2>
+        <a href="/">Back</a>
+        """
+
+    return """
+    <h1>Report Problem</h1>
+
+    <form method="POST">
+
+        Subject<br>
+        <input type="text" name="subject" required><br><br>
+
+        Description<br>
+        <textarea name="description"
+                  rows="10"
+                  cols="60"
+                  required></textarea><br><br>
+
+        <button type="submit">Submit Ticket</button>
+
+    </form>
+    """
+
+@app.route("/support-tickets")
+def support_tickets():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    if session.get("role") != "admin":
+        return "Access Denied"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT
+        id,
+        company_code,
+        username,
+        subject,
+        status,
+        created_at
+    FROM support_tickets
+    ORDER BY id DESC
+    """)
+
+    tickets = c.fetchall()
+
+    conn.close()
+
+    rows = ""
+
+    for t in tickets:
+
+        rows += f"""
+        <tr>
+            <td>{t[0]}</td>
+            <td>{t[1]}</td>
+            <td>{t[2]}</td>
+            <td>{t[3]}</td>
+            <td>{t[4]}</td>
+            <td>{t[5]}</td>
+        </tr>
+        """
+
+    return f"""
+    <h1>Support Tickets</h1>
+
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>Company</th>
+            <th>User</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Date</th>
+        </tr>
+
+        {rows}
+    </table>
+
+    <br>
+    <a href="/admin">Back</a>
+    """
+
 @app.route("/logout")
 def logout():
     session.pop("logged_in", None)

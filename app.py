@@ -1526,30 +1526,60 @@ def search():
     c = conn.cursor()
 
     # Sales
-    c.execute("""
-        SELECT date, customer, amount, staff
-        FROM sales
-        WHERE date BETWEEN %s AND %s
-        ORDER BY date DESC, id DESC
-    """, (from_date, to_date))
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT date, customer, amount, staff
+            FROM sales
+            WHERE date BETWEEN %s AND %s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date))
+    else:
+        c.execute("""
+            SELECT date, customer, amount, staff
+            FROM sales
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date, session["company_code"]))
+
     sales_results = c.fetchall()
 
     # Expenses
-    c.execute("""
-        SELECT date, category, amount, note
-        FROM expenses
-        WHERE date BETWEEN %s AND %s
-        ORDER BY date DESC, id DESC
-    """, (from_date, to_date))
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT date, category, amount, note
+            FROM expenses
+            WHERE date BETWEEN %s AND %s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date))
+    else:
+        c.execute("""
+            SELECT date, category, amount, note
+            FROM expenses
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date, session["company_code"]))
+
     expenses_results = c.fetchall()
 
     # Salaries
-    c.execute("""
-        SELECT date, staff, amount, month
-        FROM salaries
-        WHERE date BETWEEN %s AND %s
-        ORDER BY date DESC, id DESC
-    """, (from_date, to_date))
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT date, staff, amount, month
+            FROM salaries
+            WHERE date BETWEEN %s AND %s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date))
+    else:
+        c.execute("""
+            SELECT date, staff, amount, month
+            FROM salaries
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date, session["company_code"]))
+
     salary_results = c.fetchall()
 
     conn.close()

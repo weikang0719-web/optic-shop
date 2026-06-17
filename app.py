@@ -372,6 +372,7 @@ def home():
 
     if session.get("role") == "admin":
         menu_html += '<a href="/permissions"><button>Permissions</button></a>'
+        menu_html += '<a href="/companies"><button>Companies</button></a>'
 
     menu_html += '<a href="/logout"><button>Logout</button></a>'
 
@@ -1968,6 +1969,115 @@ def permissions():
 
     <br>
     <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/companies")
+def companies():
+
+    if session.get("role") != "admin":
+        return "Access Denied"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT id, company_code, company_name, address, phone, is_active
+        FROM companies
+        ORDER BY company_name
+    """)
+
+    companies = c.fetchall()
+    conn.close()
+
+    rows = ""
+
+    for co in companies:
+        status = "Active" if co[5] else "Disabled"
+
+        rows += f"""
+        <tr>
+            <td>{co[0]}</td>
+            <td>{co[1]}</td>
+            <td>{co[2]}</td>
+            <td>{co[3]}</td>
+            <td>{co[4]}</td>
+            <td>{status}</td>
+        </tr>
+        """
+
+    return f"""
+    <h1>Company Management</h1>
+
+    <a href="/add-company">
+        <button>Add Company</button>
+    </a>
+
+    <br><br>
+
+    <table border="1" cellpadding="10">
+        <tr>
+            <th>ID</th>
+            <th>Company Code</th>
+            <th>Company Name</th>
+            <th>Address</th>
+            <th>Phone</th>
+            <th>Status</th>
+        </tr>
+
+        {rows}
+    </table>
+
+    <br>
+    <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/add-company", methods=["GET", "POST"])
+def add_company():
+
+    if session.get("role") != "admin":
+        return "Access Denied"
+
+    if request.method == "POST":
+        company_code = request.form["company_code"]
+        company_name = request.form["company_name"]
+        address = request.form["address"]
+        phone = request.form["phone"]
+
+        conn = get_conn()
+        c = conn.cursor()
+
+        c.execute("""
+            INSERT INTO companies
+            (company_code, company_name, address, phone, is_active)
+            VALUES (%s, %s, %s, %s, TRUE)
+        """, (company_code, company_name, address, phone))
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/companies")
+
+    return """
+    <h1>Add Company</h1>
+
+    <form method="POST">
+        Company Code:<br>
+        <input type="text" name="company_code" required><br><br>
+
+        Company Name:<br>
+        <input type="text" name="company_name" required><br><br>
+
+        Address:<br>
+        <input type="text" name="address"><br><br>
+
+        Phone:<br>
+        <input type="text" name="phone"><br><br>
+
+        <button type="submit">Create Company</button>
+    </form>
+
+    <br>
+    <a href="/companies">Back</a>
     """
 
 @app.route("/add-user", methods=["GET", "POST"])

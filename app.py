@@ -154,7 +154,7 @@ def login():
                 can_view_reports, can_export, can_backup, can_restore
                 FROM users
                 WHERE username=%s AND password=%s AND is_active=TRUE
-        """, (username, password))
+    """, (username, password))
 
     user = c.fetchone()
     conn.close()

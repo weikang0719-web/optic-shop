@@ -678,12 +678,21 @@ def sales_list():
     conn = get_conn()
     c = conn.cursor()
 
-    c.execute("""
-        SELECT id, customer, amount, staff, date
-        FROM sales
-        WHERE date BETWEEN %s AND %s
-        ORDER BY date DESC, id DESC
-    """, (from_date, to_date))
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT id, customer, amount, staff, date
+            FROM sales
+            WHERE date BETWEEN %s AND %s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date))
+    else:
+        c.execute("""
+            SELECT id, customer, amount, staff, date
+            FROM sales
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date, session["company_code"]))
 
     records = c.fetchall()
     conn.close()
@@ -872,12 +881,21 @@ def salary_list():
     conn = get_conn()
     c = conn.cursor()
 
-    c.execute("""
-        SELECT id, staff, amount, month, date
-        FROM salaries
-        WHERE date BETWEEN %s AND %s
-        ORDER BY date DESC, id DESC
-    """, (from_date, to_date))
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT id, staff, amount, month, date
+            FROM salaries
+            WHERE date BETWEEN %s AND %s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date))
+    else:
+        c.execute("""
+            SELECT id, staff, amount, month, date
+            FROM salaries
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date, session["company_code"]))
 
     records = c.fetchall()
     conn.close()
@@ -995,7 +1013,7 @@ def delete_salary(salary_id):
 def expense():
     if not session.get("logged_in"):
         return redirect("/login")
-    
+
     if not has_permission("can_add_expenses"):
         return "Access Denied"
 
@@ -1009,9 +1027,21 @@ def expense():
         c = conn.cursor()
 
         c.execute("""
-            INSERT INTO expenses (date, category, amount, note)
-            VALUES (%s, %s, %s, %s)
-        """, (expense_date, category, amount, note))
+            INSERT INTO expenses (
+                date,
+                category,
+                amount,
+                note,
+                company_code
+            )
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            expense_date,
+            category,
+            amount,
+            note,
+            session["company_code"]
+        ))
 
         conn.commit()
         conn.close()
@@ -1022,30 +1052,23 @@ def expense():
     <h1>Add Expense</h1>
 
     <form method="POST">
-
         <label>Date:</label><br>
         <input type="date" name="expense_date" value="{datetime.now().strftime('%Y-%m-%d')}" required><br><br>
 
         <label>Category:</label><br>
         <input type="text" name="category" required><br><br>
 
-        <label>Amount (RM):</label><br>
+        <label>Amount:</label><br>
         <input type="number" step="0.01" name="amount" required><br><br>
 
         <label>Note:</label><br>
         <input type="text" name="note"><br><br>
 
-        <button type="submit">Save</button>
-
-<button type="button"
-        onclick="window.location.href='/'">
-    Cancel
-</button>
-
+        <button type="submit">Save Expense</button>
     </form>
 
     <br>
-    <a href="/">Back to Dashboard</a>
+    <a href="/">Back Dashboard</a>
     """
 
 
@@ -1064,12 +1087,21 @@ def expenses_list():
     conn = get_conn()
     c = conn.cursor()
 
-    c.execute("""
-        SELECT id, category, amount, note, date
-        FROM expenses
-        WHERE date BETWEEN %s AND %s
-        ORDER BY date DESC, id DESC
-    """, (from_date, to_date))
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT id, category, amount, note, date
+            FROM expenses
+            WHERE date BETWEEN %s AND %s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date))
+    else:
+        c.execute("""
+            SELECT id, category, amount, note, date
+            FROM expenses
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+            ORDER BY date DESC, id DESC
+        """, (from_date, to_date, session["company_code"]))
 
     records = c.fetchall()
     conn.close()

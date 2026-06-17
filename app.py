@@ -324,6 +324,25 @@ def home():
 
     conn.close()
 
+    menu_html = ""
+
+    if session.get("can_add_sales"):
+        menu_html += '<a href="/sales"><button>Add Sales</button></a>'
+
+    if session.get("can_add_expenses"):
+        menu_html += '<a href="/expenses"><button>Add Expense</button></a>'
+
+    if session.get("can_add_salary"):
+        menu_html += '<a href="/salary"><button>Add Staff Salary</button></a>'
+
+    if session.get("can_view_reports"):
+        menu_html += '<a href="/reports"><button>Reports</button></a>'
+
+    if session.get("role") == "admin":
+        menu_html += '<a href="/permissions"><button>Permissions</button></a>'
+
+    menu_html += '<a href="/logout"><button>Logout</button></a>'
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -421,12 +440,7 @@ button:hover {{
         </div>
 
         <div class="menu">
-            <a href="/sales"><button>Add Sales</button></a>
-            <a href="/expenses"><button>Add Expense</button></a>
-            <a href="/salary"><button>Add Staff Salary</button></a>
-            <a href="/reports"><button>Reports</button></a>
-            <a href="/permissions"><button>Permissions</button></a>
-            <a href="/logout"><button>Logout</button></a>
+            {menu_html}
         </div>
 
         <script>

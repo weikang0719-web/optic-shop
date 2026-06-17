@@ -394,27 +394,50 @@ def home():
     current_month = datetime.now().strftime("%Y-%m")
 
     # Monthly Sales
-    c.execute("""
-    SELECT COALESCE(SUM(amount),0)
-    FROM sales
-    WHERE date LIKE %s
-    """, (current_month + "%",))
+    if session.get("role") == "admin":
+        c.execute("""
+        SELECT COALESCE(SUM(amount),0)
+        FROM sales
+        WHERE date LIKE %s
+        """, (current_month + "%",))
+    else:
+        c.execute("""
+        SELECT COALESCE(SUM(amount),0)
+        FROM sales
+        WHERE date LIKE %s AND company_code=%s
+        """, (current_month + "%", session["company_code"]))
+
     total_sales = c.fetchone()[0]
 
     # Monthly Expenses
-    c.execute("""
-    SELECT COALESCE(SUM(amount),0)
-    FROM expenses
-    WHERE date LIKE %s
-    """, (current_month + "%",))
+    if session.get("role") == "admin":
+        c.execute("""
+        SELECT COALESCE(SUM(amount),0)
+        FROM expenses
+        WHERE date LIKE %s
+        """, (current_month + "%",))
+    else:
+        c.execute("""
+        SELECT COALESCE(SUM(amount),0)
+        FROM expenses
+        WHERE date LIKE %s AND company_code=%s
+        """, (current_month + "%", session["company_code"]))
+
     normal_expenses = c.fetchone()[0]
 
     # Monthly Salaries
-    c.execute("""
-    SELECT COALESCE(SUM(amount),0)
-    FROM salaries
-    WHERE month = %s
-    """, (current_month,))
+    if session.get("role") == "admin":
+        c.execute("""
+        SELECT COALESCE(SUM(amount),0)
+        FROM salaries
+        WHERE date LIKE %s
+        """, (current_month + "%",))
+    else:
+        c.execute("""
+        SELECT COALESCE(SUM(amount),0)
+        FROM salaries
+        WHERE date LIKE %s AND company_code=%s
+        """, (current_month + "%", session["company_code"]))
 
     total_salaries = c.fetchone()[0]
 

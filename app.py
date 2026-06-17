@@ -627,10 +627,10 @@ def sales():
         session["company_code"]
     ))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
 
-    return redirect("/sales-list")
+        return redirect("/sales-list")
 
     return f"""
     <h1>Add Sales</h1>

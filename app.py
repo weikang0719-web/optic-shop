@@ -1912,6 +1912,11 @@ def permissions():
     return f"""
     <h1>Permission Management</h1>
 
+    <a href="/add-user">
+        <button>Add User</button>
+    </a>
+    <br><br>
+
     <table border="1" cellpadding="10">
         <tr>
             <th>ID</th>
@@ -1925,6 +1930,56 @@ def permissions():
 
     <br>
     <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/add-user", methods=["GET", "POST"])
+def add_user():
+    if session.get("role") not in ["admin", "owner"]:
+        return "Access Denied"
+
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        role = request.form["role"]
+
+        if session.get("role") == "owner" and role == "admin":
+            return "Access Denied"
+
+        conn = get_conn()
+        c = conn.cursor()
+
+        c.execute("""
+            INSERT INTO users (username, password, role, is_active)
+            VALUES (%s, %s, %s, TRUE)
+        """, (username, password, role))
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/permissions")
+
+    return """
+    <h1>Add User</h1>
+
+    <form method="POST">
+        <label>Username</label><br>
+        <input type="text" name="username" required><br><br>
+
+        <label>Password</label><br>
+        <input type="text" name="password" required><br><br>
+
+        <label>Role</label><br>
+        <select name="role">
+            <option value="owner">Owner</option>
+            <option value="manager">Manager</option>
+            <option value="staff">Staff</option>
+        </select><br><br>
+
+        <button type="submit">Create User</button>
+    </form>
+
+    <br>
+    <a href="/permissions">Back</a>
     """
 
 @app.route("/edit-user/<int:user_id>", methods=["GET", "POST"])

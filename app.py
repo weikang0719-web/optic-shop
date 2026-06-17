@@ -1872,17 +1872,25 @@ def export_pdf():
 @app.route("/permissions")
 def permissions():
 
-    if session.get("role") != "admin":
+    if session.get("role") not in ["admin", "owner"]:
         return "Access Denied"
 
     conn = get_conn()
     c = conn.cursor()
 
-    c.execute("""
-        SELECT id, username, role
-        FROM users
-        ORDER BY username
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT id, username, role
+            FROM users
+            ORDER BY username
     """)
+    else:
+        c.execute("""
+            SELECT id, username, role
+            FROM users
+            WHERE role != 'admin'
+            ORDER BY username
+        """)
 
     users = c.fetchall()
     conn.close()
@@ -1922,11 +1930,22 @@ def permissions():
 @app.route("/edit-user/<int:user_id>", methods=["GET", "POST"])
 def edit_user(user_id):
 
-    if session.get("role") != "admin":
+    if session.get("role") not in ["admin", "owner"]:
         return "Access Denied"
 
     conn = get_conn()
     c = conn.cursor()
+
+    if session.get("role") == "owner":
+        c.execute(
+            "SELECT role FROM users WHERE id=%s",
+            (user_id,)
+        )
+        target = c.fetchone()
+
+        if not target or target[0] == "admin":
+            conn.close()
+            return "Access Denied"
 
     if request.method == "POST":
         role = request.form["role"]

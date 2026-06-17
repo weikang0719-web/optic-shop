@@ -41,6 +41,11 @@ def init_db():
     """)
 
     c.execute("""
+        ALTER TABLE sales
+        ADD COLUMN IF NOT EXISTS company_code TEXT
+    """)
+
+    c.execute("""
         CREATE TABLE IF NOT EXISTS expenses (
             id SERIAL PRIMARY KEY,
             category TEXT,
@@ -51,6 +56,11 @@ def init_db():
     """)
 
     c.execute("""
+        ALTER TABLE expenses
+        ADD COLUMN IF NOT EXISTS company_code TEXT
+    """)
+
+    c.execute("""
         CREATE TABLE IF NOT EXISTS salaries (
             id SERIAL PRIMARY KEY,
             staff TEXT,
@@ -58,6 +68,11 @@ def init_db():
             month TEXT,
             date TEXT DEFAULT CURRENT_TIMESTAMP
         )
+    """)
+
+    c.execute("""
+        ALTER TABLE salaries
+        ADD COLUMN IF NOT EXISTS company_code TEXT
     """)
 
     c.execute("""
@@ -253,6 +268,7 @@ def login():
                 can_add_expenses, can_edit_expenses, can_delete_expenses,
                 can_add_salary, can_edit_salary, can_delete_salary,
                 can_view_reports, can_export, can_backup, can_restore
+                company_code
             FROM users
             WHERE username=%s AND password=%s AND is_active=TRUE
         """, (username, password))
@@ -277,6 +293,7 @@ def login():
             session["can_export"] = user[12]
             session["can_backup"] = user[13]
             session["can_restore"] = user[14]
+            session["company_code"] = user[15]
 
             return redirect("/")
         else:
@@ -571,15 +588,27 @@ def sales():
         conn = get_conn()
         c = conn.cursor()
 
-        c.execute("""
-            INSERT INTO sales (date, customer, amount, staff)
-            VALUES (%s, %s, %s, %s)
-        """, (sale_date, customer, amount, staff))
+    c.execute("""
+        INSERT INTO sales (
+            date,
+            customer,
+            amount,
+            staff,
+            company_code
+        )
+        VALUES (%s, %s, %s, %s, %s)
+    """, (
+        sale_date,
+        customer,
+        amount,
+        staff,
+        session["company_code"]
+    ))
 
-        conn.commit()
-        conn.close()
+    conn.commit()
+    conn.close()
 
-        return redirect("/sales-list")
+    return redirect("/sales-list")
 
     return f"""
     <h1>Add Sales</h1>

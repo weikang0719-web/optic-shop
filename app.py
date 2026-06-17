@@ -61,35 +61,49 @@ def init_db():
     """)
 
     c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE,
-            password TEXT,
-            role TEXT
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE,
+        password TEXT,
+        role TEXT DEFAULT 'staff',
+
+        can_add_sales BOOLEAN DEFAULT FALSE,
+        can_edit_sales BOOLEAN DEFAULT FALSE,
+        can_delete_sales BOOLEAN DEFAULT FALSE,
+
+        can_add_expenses BOOLEAN DEFAULT FALSE,
+        can_edit_expenses BOOLEAN DEFAULT FALSE,
+        can_delete_expenses BOOLEAN DEFAULT FALSE,
+
+        can_add_salary BOOLEAN DEFAULT FALSE,
+        can_edit_salary BOOLEAN DEFAULT FALSE,
+        can_delete_salary BOOLEAN DEFAULT FALSE,
+
+        can_view_reports BOOLEAN DEFAULT FALSE,
+        can_export BOOLEAN DEFAULT FALSE,
+        can_backup BOOLEAN DEFAULT FALSE,
+        can_restore BOOLEAN DEFAULT FALSE,
+
+        is_active BOOLEAN DEFAULT TRUE
         )
     """)
 
     c.execute("""
-        INSERT INTO users (username, password, role)
-        SELECT 'admin', 'admin123', 'admin'
+        INSERT INTO users (
+            username, password, role,
+            can_add_sales, can_edit_sales, can_delete_sales,
+            can_add_expenses, can_edit_expenses, can_delete_expenses,
+            can_add_salary, can_edit_salary, can_delete_salary,
+            can_view_reports, can_export, can_backup, can_restore
+        )
+        SELECT
+            'admin', 'admin123', 'admin',
+            TRUE, TRUE, TRUE,
+            TRUE, TRUE, TRUE,
+            TRUE, TRUE, TRUE,
+            TRUE, TRUE, TRUE, TRUE
         WHERE NOT EXISTS (
             SELECT 1 FROM users WHERE username='admin'
-        )
-    """)
-
-    c.execute("""
-        INSERT INTO users (username, password, role)
-        SELECT 'manager', 'manager123', 'manager'
-        WHERE NOT EXISTS (
-            SELECT 1 FROM users WHERE username='manager'
-        )
-    """)
-
-    c.execute("""
-        INSERT INTO users (username, password, role)
-        SELECT 'staff', 'staff123', 'staff'
-        WHERE NOT EXISTS (
-            SELECT 1 FROM users WHERE username='staff'
         )
     """)
 
@@ -108,24 +122,46 @@ def login():
         conn = get_conn()
         c = conn.cursor()
 
-        c.execute("""
-            SELECT username, role
-            FROM users
-            WHERE username = %s AND password = %s
+    c.execute("""
+            SELECT
+                username, role,
+                can_add_sales, can_edit_sales, can_delete_sales,
+                can_add_expenses, can_edit_expenses, can_delete_expenses,
+                can_add_salary, can_edit_salary, can_delete_salary,
+                can_view_reports, can_export, can_backup, can_restore
+                FROM users
+                WHERE username=%s AND password=%s AND is_active=TRUE
         """, (username, password))
 
-        user = c.fetchone()
+    user = c.fetchone()
+    conn.close()
 
-        conn.close()
+    if user:
+        session["logged_in"] = True
+        session["username"] = user[0]
+        session["role"] = user[1]
 
-        if user:
-            session["logged_in"] = True
-            session["username"] = user[0]
-            session["role"] = user[1]
+        session["can_add_sales"] = user[2]
+        session["can_edit_sales"] = user[3]
+        session["can_delete_sales"] = user[4]
 
-            return redirect("/")
-        else:
-            return """
+        session["can_add_expenses"] = user[5]
+        session["can_edit_expenses"] = user[6]
+        session["can_delete_expenses"] = user[7]
+
+        session["can_add_salary"] = user[8]
+        session["can_edit_salary"] = user[9]
+        session["can_delete_salary"] = user[10]
+
+        session["can_view_reports"] = user[11]
+        session["can_export"] = user[12]
+        session["can_backup"] = user[13]
+        session["can_restore"] = user[14]
+
+        return redirect("/")
+    else:
+            
+        return """
             <h1>Login Failed</h1>
             <p>Wrong username or password.</p>
             <a href="/login">Try Again</a>
@@ -206,6 +242,8 @@ button:hover{
 </html>
 """
 
+def has_permission(permission):
+    return session.get(permission, False) or session.get("role") == "admin"
 
 @app.route("/")
 def home():
@@ -385,6 +423,9 @@ setInterval(updateDateTime, 1000);
 def sales():
     if not session.get("logged_in"):
         return redirect("/login")
+    
+    if not has_permission("can_add_sales"):
+        return "Access Denied"
 
     if request.method == "POST":
         sale_date = request.form["sale_date"]
@@ -574,6 +615,9 @@ def edit_sale(sale_id):
 def salary():
     if not session.get("logged_in"):
         return redirect("/login")
+    
+    if not has_permission("can_add_salary"):
+        return "Access Denied"
 
     if request.method == "POST":
         salary_date = request.form["salary_date"]
@@ -765,6 +809,9 @@ def delete_salary(salary_id):
 def expense():
     if not session.get("logged_in"):
         return redirect("/login")
+    
+    if not has_permission("can_add_expenses"):
+        return "Access Denied"
 
     if request.method == "POST":
         expense_date = request.form["expense_date"]
@@ -1772,6 +1819,56 @@ def export_pdf():
         download_name="Detailed_Report.pdf",
         mimetype="application/pdf"
     )
+
+@app.route("/permissions")
+def permissions():
+
+    if session.get("role") != "admin":
+        return "Access Denied"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT id, username, role
+        FROM users
+        ORDER BY username
+    """)
+
+    users = c.fetchall()
+    conn.close()
+
+    rows = ""
+
+    for u in users:
+        rows += f"""
+        <tr>
+            <td>{u[0]}</td>
+            <td>{u[1]}</td>
+            <td>{u[2]}</td>
+            <td>
+                <a href="/edit-user/{u[0]}">Edit Permission</a>
+            </td>
+        </tr>
+        """
+
+    return f"""
+    <h1>Permission Management</h1>
+
+    <table border="1" cellpadding="10">
+        <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Action</th>
+        </tr>
+
+        {rows}
+    </table>
+
+    <br>
+    <a href="/">Back Dashboard</a>
+    """
 
 @app.route("/logout")
 def logout():

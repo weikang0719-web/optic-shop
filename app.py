@@ -60,6 +60,23 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            role TEXT
+        )
+    """)
+
+    c.execute("""
+        INSERT INTO users (username, password, role)
+        SELECT 'admin', 'admin123', 'admin'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM users WHERE username='admin'
+        )
+    """)
+
     conn.commit()
     conn.close()
 

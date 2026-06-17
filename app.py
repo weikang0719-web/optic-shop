@@ -1298,7 +1298,7 @@ def report():
         total_expenses = expenses_total + salary_total
         profit = sales_total - total_expenses
 
-        return f"""
+    return f"""
     <h1>Profit & Loss Report</h1>
 
     <form method="POST">

@@ -61,28 +61,28 @@ def init_db():
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username TEXT UNIQUE,
-        password TEXT,
-        role TEXT DEFAULT 'staff',
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE,
+            password TEXT,
+            role TEXT DEFAULT 'staff',
 
-        can_add_sales BOOLEAN DEFAULT FALSE,
-        can_edit_sales BOOLEAN DEFAULT FALSE,
-        can_delete_sales BOOLEAN DEFAULT FALSE,
+            can_add_sales BOOLEAN DEFAULT FALSE,
+            can_edit_sales BOOLEAN DEFAULT FALSE,
+            can_delete_sales BOOLEAN DEFAULT FALSE,
 
-        can_add_expenses BOOLEAN DEFAULT FALSE,
-        can_edit_expenses BOOLEAN DEFAULT FALSE,
-        can_delete_expenses BOOLEAN DEFAULT FALSE,
+            can_add_expenses BOOLEAN DEFAULT FALSE,
+            can_edit_expenses BOOLEAN DEFAULT FALSE,
+            can_delete_expenses BOOLEAN DEFAULT FALSE,
 
-        can_add_salary BOOLEAN DEFAULT FALSE,
-        can_edit_salary BOOLEAN DEFAULT FALSE,
-        can_delete_salary BOOLEAN DEFAULT FALSE,
+            can_add_salary BOOLEAN DEFAULT FALSE,
+            can_edit_salary BOOLEAN DEFAULT FALSE,
+            can_delete_salary BOOLEAN DEFAULT FALSE,
 
-        can_view_reports BOOLEAN DEFAULT FALSE,
-        can_export BOOLEAN DEFAULT FALSE,
-        can_backup BOOLEAN DEFAULT FALSE,
-        can_restore BOOLEAN DEFAULT FALSE,
+            can_view_reports BOOLEAN DEFAULT FALSE,
+            can_export BOOLEAN DEFAULT FALSE,
+            can_backup BOOLEAN DEFAULT FALSE,
+            can_restore BOOLEAN DEFAULT FALSE,
 
         is_active BOOLEAN DEFAULT TRUE
         )
@@ -146,6 +146,38 @@ def init_db():
         can_restore=TRUE,
         is_active=TRUE
 """)
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS companies (
+        id SERIAL PRIMARY KEY,
+        company_code TEXT UNIQUE,
+        company_name TEXT,
+        address TEXT,
+        phone TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    c.execute("""
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS company_code TEXT
+    """)
+
+    c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS company_code TEXT
+    """)
+
+    c.execute("""
+    ALTER TABLE expenses
+    ADD COLUMN IF NOT EXISTS company_code TEXT
+    """)
+
+    c.execute("""
+    ALTER TABLE salaries
+    ADD COLUMN IF NOT EXISTS company_code TEXT
+    """)
 
     conn.commit()
     conn.close()

@@ -832,12 +832,7 @@ def salary():
             company_code
         )
         VALUES (%s, %s, %s, %s, %s)
-    """, (
-        salary_date,
-        staff,
-        amount,
-        month,
-        session["company_code"]
+    """, (salary_date, staff, amount, month, session["company_code"]
     ))
 
         conn.commit()

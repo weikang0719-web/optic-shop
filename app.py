@@ -2122,7 +2122,7 @@ def permissions():
             SELECT id, username, role
             FROM users
             WHERE role != 'admin'
-            AND company_code%s      
+            AND company_code=%s      
             ORDER BY username
         """, (session["company_code"],))
 

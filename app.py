@@ -77,6 +77,22 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        INSERT INTO users (username, password, role)
+        SELECT 'manager', 'manager123', 'manager'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM users WHERE username='manager'
+        )
+    """)
+
+    c.execute("""
+        INSERT INTO users (username, password, role)
+        SELECT 'staff', 'staff123', 'staff'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM users WHERE username='staff'
+        )
+    """)
+
     conn.commit()
     conn.close()
 

@@ -462,7 +462,7 @@ def home():
     if session.get("can_view_reports"):
         menu_html += '<a href="/reports"><button>Reports</button></a>'
 
-    if session.get("role") == "admin":
+    if session.get("role") in ["admin", "owner"]:
         menu_html += '<a href="/permissions"><button>Permissions</button></a>'
         menu_html += '<a href="/companies"><button>Companies</button></a>'
 

@@ -202,12 +202,6 @@ def login():
             """
 
     return """
-            <h1>Login Failed</h1>
-            <p>Wrong username or password.</p>
-            <a href="/login">Try Again</a>
-            """
-
-    return """
     <!DOCTYPE html>
     <html>
 <head>

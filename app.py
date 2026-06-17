@@ -294,6 +294,9 @@ def login():
             session["can_restore"] = user[14]
             session["company_code"] = user[15]
 
+            if session["role"] == "admin":
+                return redirect("/admin")
+
             return redirect("/")
         else:
             return """
@@ -2570,6 +2573,24 @@ def toggle_user(user_id):
     conn.close()
 
     return redirect("/permissions")
+
+@app.route("/admin")
+def admin_dashboard():
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    if session.get("role") != "admin":
+        return "Access Denied"
+
+    return """
+    <h1>Super Admin Dashboard</h1>
+
+    <ul>
+        <li><a href="/permissions">Users & Permissions</a></li>
+        <li><a href="/register-owner">Create Company</a></li>
+        <li><a href="/logout">Logout</a></li>
+    </ul>
+    """
 
 @app.route("/logout")
 def logout():

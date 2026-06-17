@@ -824,9 +824,21 @@ def salary():
         c = conn.cursor()
 
         c.execute("""
-            INSERT INTO salaries (date, staff, amount, month)
-            VALUES (%s, %s, %s, %s)
-        """, (salary_date, staff, amount, month))
+        INSERT INTO salaries (
+            date,
+            staff,
+            amount,
+            month,
+            company_code
+        )
+        VALUES (%s, %s, %s, %s, %s)
+    """, (
+        salary_date,
+        staff,
+        amount,
+        month,
+        session["company_code"]
+    ))
 
         conn.commit()
         conn.close()

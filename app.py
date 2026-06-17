@@ -1905,6 +1905,116 @@ def permissions():
     <a href="/">Back Dashboard</a>
     """
 
+@app.route("/edit-user/<int:user_id>", methods=["GET", "POST"])
+def edit_user(user_id):
+
+    if session.get("role") != "admin":
+        return "Access Denied"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+        role = request.form["role"]
+
+        permissions = [
+            "can_add_sales", "can_edit_sales", "can_delete_sales",
+            "can_add_expenses", "can_edit_expenses", "can_delete_expenses",
+            "can_add_salary", "can_edit_salary", "can_delete_salary",
+            "can_view_reports", "can_export", "can_backup", "can_restore",
+            "is_active"
+        ]
+
+        values = [role]
+        for p in permissions:
+            values.append(p in request.form)
+
+        values.append(user_id)
+
+        c.execute("""
+            UPDATE users SET
+                role=%s,
+                can_add_sales=%s,
+                can_edit_sales=%s,
+                can_delete_sales=%s,
+                can_add_expenses=%s,
+                can_edit_expenses=%s,
+                can_delete_expenses=%s,
+                can_add_salary=%s,
+                can_edit_salary=%s,
+                can_delete_salary=%s,
+                can_view_reports=%s,
+                can_export=%s,
+                can_backup=%s,
+                can_restore=%s,
+                is_active=%s
+            WHERE id=%s
+        """, values)
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/permissions")
+
+    c.execute("""
+        SELECT id, username, role,
+               can_add_sales, can_edit_sales, can_delete_sales,
+               can_add_expenses, can_edit_expenses, can_delete_expenses,
+               can_add_salary, can_edit_salary, can_delete_salary,
+               can_view_reports, can_export, can_backup, can_restore,
+               is_active
+        FROM users
+        WHERE id=%s
+    """, (user_id,))
+
+    u = c.fetchone()
+    conn.close()
+
+    def checked(value):
+        return "checked" if value else ""
+
+    return f"""
+    <h1>Edit Permission: {u[1]}</h1>
+
+    <form method="POST">
+        <label>Role:</label>
+        <select name="role">
+            <option value="admin" {"selected" if u[2]=="admin" else ""}>Admin</option>
+            <option value="manager" {"selected" if u[2]=="manager" else ""}>Manager</option>
+            <option value="staff" {"selected" if u[2]=="staff" else ""}>Staff</option>
+        </select>
+
+        <h3>Sales</h3>
+        <label><input type="checkbox" name="can_add_sales" {checked(u[3])}> Add Sales</label><br>
+        <label><input type="checkbox" name="can_edit_sales" {checked(u[4])}> Edit Sales</label><br>
+        <label><input type="checkbox" name="can_delete_sales" {checked(u[5])}> Delete Sales</label><br>
+
+        <h3>Expenses</h3>
+        <label><input type="checkbox" name="can_add_expenses" {checked(u[6])}> Add Expenses</label><br>
+        <label><input type="checkbox" name="can_edit_expenses" {checked(u[7])}> Edit Expenses</label><br>
+        <label><input type="checkbox" name="can_delete_expenses" {checked(u[8])}> Delete Expenses</label><br>
+
+        <h3>Salary</h3>
+        <label><input type="checkbox" name="can_add_salary" {checked(u[9])}> Add Salary</label><br>
+        <label><input type="checkbox" name="can_edit_salary" {checked(u[10])}> Edit Salary</label><br>
+        <label><input type="checkbox" name="can_delete_salary" {checked(u[11])}> Delete Salary</label><br>
+
+        <h3>Reports</h3>
+        <label><input type="checkbox" name="can_view_reports" {checked(u[12])}> View Reports</label><br>
+        <label><input type="checkbox" name="can_export" {checked(u[13])}> Export</label><br>
+        <label><input type="checkbox" name="can_backup" {checked(u[14])}> Backup</label><br>
+        <label><input type="checkbox" name="can_restore" {checked(u[15])}> Restore</label><br>
+
+        <h3>Status</h3>
+        <label><input type="checkbox" name="is_active" {checked(u[16])}> Active</label><br><br>
+
+        <button type="submit">Save Permission</button>
+    </form>
+
+    <br>
+    <a href="/permissions">Back</a>
+    """
+
 @app.route("/logout")
 def logout():
     session.pop("logged_in", None)

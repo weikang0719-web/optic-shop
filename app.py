@@ -1905,6 +1905,10 @@ def permissions():
             <td>{u[2]}</td>
             <td>
                 <a href="/edit-user/{u[0]}">Edit Permission</a>
+                 |
+                <a href="/reset-password/{u[0]}">Reset Password</a>
+                 |
+                <a href="/delete-user/{u[0]}" onclick="return confirm('Delete this user?')">Delete</a>
             </td>
         </tr>
         """
@@ -2102,6 +2106,36 @@ def edit_user(user_id):
     <br>
     <a href="/permissions">Back</a>
     """
+
+@app.route("/delete-user/<int:user_id>")
+def delete_user(user_id):
+
+    if session.get("role") not in ["admin", "owner"]:
+        return "Access Denied"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if session.get("role") == "owner":
+        c.execute(
+            "SELECT role FROM users WHERE id=%s",
+            (user_id,)
+        )
+        target = c.fetchone()
+
+        if target and target[0] == "admin":
+            conn.close()
+            return "Access Denied"
+
+    c.execute(
+        "DELETE FROM users WHERE id=%s",
+        (user_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/permissions")
 
 @app.route("/logout")
 def logout():

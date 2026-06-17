@@ -184,6 +184,59 @@ def init_db():
 
 init_db()
 
+@app.route("/register-owner", methods=["GET", "POST"])
+def register_owner():
+
+    if request.method == "POST":
+        company_code = request.form["company_code"]
+        username = request.form["username"]
+        password = request.form["password"]
+
+        conn = get_conn()
+        c = conn.cursor()
+
+        c.execute("""
+            SELECT company_code 
+            FROM companies 
+            WHERE company_code=%s AND is_active=TRUE
+        """, (company_code,))
+
+        company = c.fetchone()
+
+        if not company:
+            conn.close()
+            return "Invalid Company Code"
+
+        c.execute("""
+            INSERT INTO users (username, password, role, company_code, is_active)
+            VALUES (%s, %s, 'owner', %s, TRUE)
+        """, (username, password, company_code))
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/login")
+
+    return """
+    <h1>Register Owner Account</h1>
+
+    <form method="POST">
+        Company Code:<br>
+        <input name="company_code" required><br><br>
+
+        Username:<br>
+        <input name="username" required><br><br>
+
+        Password:<br>
+        <input type="password" name="password" required><br><br>
+
+        <button type="submit">Create Owner Account</button>
+    </form>
+
+    <br>
+    <a href="/login">Login</a>
+    """
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":

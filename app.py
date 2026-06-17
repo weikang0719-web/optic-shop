@@ -267,8 +267,7 @@ def login():
                 can_add_sales, can_edit_sales, can_delete_sales,
                 can_add_expenses, can_edit_expenses, can_delete_expenses,
                 can_add_salary, can_edit_salary, can_delete_salary,
-                can_view_reports, can_export, can_backup, can_restore
-                company_code
+                can_view_reports, can_export, can_backup, can_restore, company_code
             FROM users
             WHERE username=%s AND password=%s AND is_active=TRUE
         """, (username, password))

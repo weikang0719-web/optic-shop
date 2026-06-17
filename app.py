@@ -112,23 +112,40 @@ def init_db():
     """)
 
     c.execute("""
-        INSERT INTO users (
-            username, password, role,
-            can_add_sales, can_edit_sales, can_delete_sales,
-            can_add_expenses, can_edit_expenses, can_delete_expenses,
-            can_add_salary, can_edit_salary, can_delete_salary,
-            can_view_reports, can_export, can_backup, can_restore
-        )
-        SELECT
-            'admin', 'admin123', 'admin',
-            TRUE, TRUE, TRUE,
-            TRUE, TRUE, TRUE,
-            TRUE, TRUE, TRUE,
-            TRUE, TRUE, TRUE, TRUE
-        WHERE NOT EXISTS (
-            SELECT 1 FROM users WHERE username='admin'
-        )
-    """)
+    INSERT INTO users (
+        username, password, role,
+        can_add_sales, can_edit_sales, can_delete_sales,
+        can_add_expenses, can_edit_expenses, can_delete_expenses,
+        can_add_salary, can_edit_salary, can_delete_salary,
+        can_view_reports, can_export, can_backup, can_restore,
+        is_active
+    )
+    VALUES (
+        'admin', 'admin123', 'admin',
+        TRUE, TRUE, TRUE,
+        TRUE, TRUE, TRUE,
+        TRUE, TRUE, TRUE,
+        TRUE, TRUE, TRUE, TRUE,
+        TRUE
+    )
+    ON CONFLICT (username) DO UPDATE SET
+        password='admin123',
+        role='admin',
+        can_add_sales=TRUE,
+        can_edit_sales=TRUE,
+        can_delete_sales=TRUE,
+        can_add_expenses=TRUE,
+        can_edit_expenses=TRUE,
+        can_delete_expenses=TRUE,
+        can_add_salary=TRUE,
+        can_edit_salary=TRUE,
+        can_delete_salary=TRUE,
+        can_view_reports=TRUE,
+        can_export=TRUE,
+        can_backup=TRUE,
+        can_restore=TRUE,
+        is_active=TRUE
+""")
 
     conn.commit()
     conn.close()

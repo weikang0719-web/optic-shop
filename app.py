@@ -88,6 +88,29 @@ def init_db():
         )
     """)
 
+    permission_columns = [
+    "can_add_sales",
+    "can_edit_sales",
+    "can_delete_sales",
+    "can_add_expenses",
+    "can_edit_expenses",
+    "can_delete_expenses",
+    "can_add_salary",
+    "can_edit_salary",
+    "can_delete_salary",
+    "can_view_reports",
+    "can_export",
+    "can_backup",
+    "can_restore",
+    "is_active"
+    ]
+
+    for col in permission_columns:
+        c.execute(f"""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS {col} BOOLEAN DEFAULT TRUE
+    """)
+
     c.execute("""
         INSERT INTO users (
             username, password, role,

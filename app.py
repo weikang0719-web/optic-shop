@@ -1908,6 +1908,8 @@ def permissions():
                  |
                 <a href="/reset-password/{u[0]}">Reset Password</a>
                  |
+                <a href="/toggle-user/{u[0]}">Enable / Disable</a>
+                 |
                 <a href="/delete-user/{u[0]}" onclick="return confirm('Delete this user?')">Delete</a>
             </td>
         </tr>
@@ -1938,6 +1940,7 @@ def permissions():
 
 @app.route("/add-user", methods=["GET", "POST"])
 def add_user():
+
     if session.get("role") not in ["admin", "owner"]:
         return "Access Denied"
 
@@ -1946,7 +1949,7 @@ def add_user():
         password = request.form["password"]
         role = request.form["role"]
 
-        if session.get("role") == "owner" and role == "admin":
+        if session.get("role") == "owner" and role in ["admin", "owner"]:
             return "Access Denied"
 
         conn = get_conn()
@@ -1966,17 +1969,17 @@ def add_user():
     <h1>Add User</h1>
 
     <form method="POST">
-        <label>Username</label><br>
+        Username:<br>
         <input type="text" name="username" required><br><br>
 
-        <label>Password</label><br>
+        Password:<br>
         <input type="text" name="password" required><br><br>
 
-        <label>Role</label><br>
+        Role:<br>
         <select name="role">
-            <option value="owner">Owner</option>
-            <option value="manager">Manager</option>
             <option value="staff">Staff</option>
+            <option value="manager">Manager</option>
+            <option value="owner">Owner</option>
         </select><br><br>
 
         <button type="submit">Create User</button>
@@ -2182,6 +2185,48 @@ def reset_password(user_id):
     <br>
     <a href="/permissions">Back</a>
     """
+
+@app.route("/toggle-user/<int:user_id>")
+def toggle_user(user_id):
+
+    if session.get("role") not in ["admin", "owner"]:
+        return "Access Denied"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    # owner不能动admin
+    if session.get("role") == "owner":
+        c.execute(
+            "SELECT role FROM users WHERE id=%s",
+            (user_id,)
+        )
+        target = c.fetchone()
+
+        if target and target[0] == "admin":
+            conn.close()
+            return "Access Denied"
+
+    c.execute(
+        "SELECT is_active FROM users WHERE id=%s",
+        (user_id,)
+    )
+
+    user = c.fetchone()
+
+    if user:
+        new_status = not user[0]
+
+        c.execute(
+            "UPDATE users SET is_active=%s WHERE id=%s",
+            (new_status, user_id)
+        )
+
+        conn.commit()
+
+    conn.close()
+
+    return redirect("/permissions")
 
 @app.route("/logout")
 def logout():

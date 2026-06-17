@@ -610,16 +610,16 @@ def sales():
         conn = get_conn()
         c = conn.cursor()
 
-    c.execute("""
-        INSERT INTO sales (
-            date,
-            customer,
-            amount,
-            staff,
-            company_code
-        )
-        VALUES (%s, %s, %s, %s, %s)
-    """, (
+        c.execute("""
+            INSERT INTO sales (
+                date,
+                customer,
+                amount,
+                staff,
+                company_code
+            )
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
         sale_date,
         customer,
         amount,
@@ -1206,25 +1206,52 @@ def report():
         conn = get_conn()
         c = conn.cursor()
 
+    if session.get("role") == "admin":
         c.execute("""
-            SELECT COALESCE(SUM(amount), 0)
+            SELECT COALESCE(SUM(amount),0)
             FROM sales
             WHERE date BETWEEN %s AND %s
         """, (from_date, to_date))
-        sales_total = c.fetchone()[0]
-
+    else:
         c.execute("""
-            SELECT COALESCE(SUM(amount), 0)
+            SELECT COALESCE(SUM(amount),0)
+            FROM sales
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+        """, (from_date, to_date, session["company_code"]))
+
+    sales_total = c.fetchone()[0]
+
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT COALESCE(SUM(amount),0)
             FROM expenses
             WHERE date BETWEEN %s AND %s
         """, (from_date, to_date))
-        expenses_total = c.fetchone()[0]
-
+    else:
         c.execute("""
-            SELECT COALESCE(SUM(amount), 0)
+            SELECT COALESCE(SUM(amount),0)
+            FROM expenses
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+        """, (from_date, to_date, session["company_code"]))
+
+    expenses_total = c.fetchone()[0]
+
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT COALESCE(SUM(amount),0)
             FROM salaries
             WHERE date BETWEEN %s AND %s
         """, (from_date, to_date))
+    else:
+        c.execute("""
+            SELECT COALESCE(SUM(amount),0)
+            FROM salaries
+            WHERE date BETWEEN %s AND %s
+            AND company_code=%s
+        """, (from_date, to_date, session["company_code"]))
+
         salary_total = c.fetchone()[0]
 
         conn.close()
@@ -1232,7 +1259,7 @@ def report():
         total_expenses = expenses_total + salary_total
         profit = sales_total - total_expenses
 
-    return f"""
+        return f"""
     <h1>Profit & Loss Report</h1>
 
     <form method="POST">
@@ -2026,8 +2053,9 @@ def permissions():
             SELECT id, username, role
             FROM users
             WHERE role != 'admin'
+            AND company_code%s      
             ORDER BY username
-        """)
+        """, (session["company_code"],))
 
     users = c.fetchall()
     conn.close()
@@ -2202,9 +2230,9 @@ def add_user():
         c = conn.cursor()
 
         c.execute("""
-            INSERT INTO users (username, password, role, is_active)
-            VALUES (%s, %s, %s, TRUE)
-        """, (username, password, role))
+            INSERT INTO users (username, password, role, company_code, is_active)
+            VALUES (%s, %s, %s, %s, TRUE)
+        """, (username, password, role, session["company_code"]))
 
         conn.commit()
         conn.close()

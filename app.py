@@ -1245,51 +1245,51 @@ def report():
         conn = get_conn()
         c = conn.cursor()
 
-    if session.get("role") == "admin":
-        c.execute("""
-            SELECT COALESCE(SUM(amount),0)
-            FROM sales
-            WHERE date BETWEEN %s AND %s
-        """, (from_date, to_date))
-    else:
-        c.execute("""
-            SELECT COALESCE(SUM(amount),0)
-            FROM sales
-            WHERE date BETWEEN %s AND %s
-            AND company_code=%s
-        """, (from_date, to_date, session["company_code"]))
+        if session.get("role") == "admin":
+            c.execute("""
+                SELECT COALESCE(SUM(amount),0)
+                FROM sales
+                WHERE date BETWEEN %s AND %s
+            """, (from_date, to_date))
+        else:
+            c.execute("""
+                SELECT COALESCE(SUM(amount),0)
+                FROM sales
+                WHERE date BETWEEN %s AND %s
+                AND company_code=%s
+            """, (from_date, to_date, session["company_code"]))
 
-    sales_total = c.fetchone()[0]
+        sales_total = c.fetchone()[0]
 
-    if session.get("role") == "admin":
-        c.execute("""
-            SELECT COALESCE(SUM(amount),0)
-            FROM expenses
-            WHERE date BETWEEN %s AND %s
-        """, (from_date, to_date))
-    else:
-        c.execute("""
-            SELECT COALESCE(SUM(amount),0)
-            FROM expenses
-            WHERE date BETWEEN %s AND %s
-            AND company_code=%s
-        """, (from_date, to_date, session["company_code"]))
+        if session.get("role") == "admin":
+            c.execute("""
+                SELECT COALESCE(SUM(amount),0)
+                FROM expenses
+                WHERE date BETWEEN %s AND %s
+            """, (from_date, to_date))
+        else:
+            c.execute("""
+                SELECT COALESCE(SUM(amount),0)
+                FROM expenses
+                WHERE date BETWEEN %s AND %s
+                AND company_code=%s
+            """, (from_date, to_date, session["company_code"]))
 
-    expenses_total = c.fetchone()[0]
+        expenses_total = c.fetchone()[0]
 
-    if session.get("role") == "admin":
-        c.execute("""
-            SELECT COALESCE(SUM(amount),0)
-            FROM salaries
-            WHERE date BETWEEN %s AND %s
-        """, (from_date, to_date))
-    else:
-        c.execute("""
-            SELECT COALESCE(SUM(amount),0)
-            FROM salaries
-            WHERE date BETWEEN %s AND %s
-            AND company_code=%s
-        """, (from_date, to_date, session["company_code"]))
+        if session.get("role") == "admin":
+            c.execute("""
+                SELECT COALESCE(SUM(amount),0)
+                FROM salaries
+                WHERE date BETWEEN %s AND %s
+            """, (from_date, to_date))
+        else:
+            c.execute("""
+                SELECT COALESCE(SUM(amount),0)
+                FROM salaries
+                WHERE date BETWEEN %s AND %s
+                AND company_code=%s
+            """, (from_date, to_date, session["company_code"]))
 
         salary_total = c.fetchone()[0]
 

@@ -2137,6 +2137,52 @@ def delete_user(user_id):
 
     return redirect("/permissions")
 
+@app.route("/reset-password/<int:user_id>", methods=["GET", "POST"])
+def reset_password(user_id):
+
+    if session.get("role") not in ["admin", "owner"]:
+        return "Access Denied"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if session.get("role") == "owner":
+        c.execute("SELECT role FROM users WHERE id=%s", (user_id,))
+        target = c.fetchone()
+
+        if target and target[0] == "admin":
+            conn.close()
+            return "Access Denied"
+
+    if request.method == "POST":
+        new_password = request.form["password"]
+
+        c.execute(
+            "UPDATE users SET password=%s WHERE id=%s",
+            (new_password, user_id)
+        )
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/permissions")
+
+    conn.close()
+
+    return """
+    <h1>Reset Password</h1>
+
+    <form method="POST">
+        New Password:<br>
+        <input type="text" name="password" required><br><br>
+
+        <button type="submit">Save Password</button>
+    </form>
+
+    <br>
+    <a href="/permissions">Back</a>
+    """
+
 @app.route("/logout")
 def logout():
     session.pop("logged_in", None)

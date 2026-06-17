@@ -137,7 +137,6 @@ init_db()
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -145,46 +144,47 @@ def login():
         conn = get_conn()
         c = conn.cursor()
 
-    c.execute("""
+        c.execute("""
             SELECT
                 username, role,
                 can_add_sales, can_edit_sales, can_delete_sales,
                 can_add_expenses, can_edit_expenses, can_delete_expenses,
                 can_add_salary, can_edit_salary, can_delete_salary,
                 can_view_reports, can_export, can_backup, can_restore
-                FROM users
-                WHERE username=%s AND password=%s AND is_active=TRUE
-    """, (username, password))
+            FROM users
+            WHERE username=%s AND password=%s AND is_active=TRUE
+        """, (username, password))
 
-    user = c.fetchone()
-    conn.close()
+        user = c.fetchone()
+        conn.close()
 
-    if user:
-        session["logged_in"] = True
-        session["username"] = user[0]
-        session["role"] = user[1]
+        if user:
+            session["logged_in"] = True
+            session["username"] = user[0]
+            session["role"] = user[1]
+            session["can_add_sales"] = user[2]
+            session["can_edit_sales"] = user[3]
+            session["can_delete_sales"] = user[4]
+            session["can_add_expenses"] = user[5]
+            session["can_edit_expenses"] = user[6]
+            session["can_delete_expenses"] = user[7]
+            session["can_add_salary"] = user[8]
+            session["can_edit_salary"] = user[9]
+            session["can_delete_salary"] = user[10]
+            session["can_view_reports"] = user[11]
+            session["can_export"] = user[12]
+            session["can_backup"] = user[13]
+            session["can_restore"] = user[14]
 
-        session["can_add_sales"] = user[2]
-        session["can_edit_sales"] = user[3]
-        session["can_delete_sales"] = user[4]
+            return redirect("/")
+        else:
+            return """
+            <h1>Login Failed</h1>
+            <p>Wrong username or password.</p>
+            <a href="/login">Try Again</a>
+            """
 
-        session["can_add_expenses"] = user[5]
-        session["can_edit_expenses"] = user[6]
-        session["can_delete_expenses"] = user[7]
-
-        session["can_add_salary"] = user[8]
-        session["can_edit_salary"] = user[9]
-        session["can_delete_salary"] = user[10]
-
-        session["can_view_reports"] = user[11]
-        session["can_export"] = user[12]
-        session["can_backup"] = user[13]
-        session["can_restore"] = user[14]
-
-        return redirect("/")
-    else:
-            
-        return """
+    return """
             <h1>Login Failed</h1>
             <p>Wrong username or password.</p>
             <a href="/login">Try Again</a>

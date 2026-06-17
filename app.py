@@ -425,6 +425,7 @@ button:hover {{
             <a href="/expenses"><button>Add Expense</button></a>
             <a href="/salary"><button>Add Staff Salary</button></a>
             <a href="/reports"><button>Reports</button></a>
+            <a href="/permissions"><button>Permissions</button></a>
             <a href="/logout"><button>Logout</button></a>
         </div>
 

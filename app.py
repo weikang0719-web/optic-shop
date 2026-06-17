@@ -194,6 +194,18 @@ def init_db():
     ADD COLUMN IF NOT EXISTS company_code TEXT
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        company_code TEXT,
+        username TEXT,
+        subject TEXT,
+        description TEXT,
+        status TEXT DEFAULT 'OPEN',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -2586,8 +2598,9 @@ def admin_dashboard():
     <h1>Super Admin Dashboard</h1>
 
     <ul>
-        <li><a href="/permissions">Users & Permissions</a></li>
         <li><a href="/register-owner">Create Company</a></li>
+        <li><a href="/support-tickets">Support Tickets</a></li>
+        <li><a href="/error-logs">Error Logs</a></li>
         <li><a href="/logout">Logout</a></li>
     </ul>
     """

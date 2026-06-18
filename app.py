@@ -761,6 +761,7 @@ def sales():
             customer,
             reference_no,
             remarks,
+            payment_method,
             amount,
             staff,
             session["company_code"]

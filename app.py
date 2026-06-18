@@ -965,6 +965,7 @@ def receipt(sale_id):
         <p><b>Date:</b> {str(sale[1])[:10]}</p>
         <p><b>Customer:</b> {sale[2]}</p>
         <p><b>Staff:</b> {sale[4]}</p>
+        <p><b>Remark:</b> {sale[7] or '-'}</p>
 
         <div class="line"></div>
 

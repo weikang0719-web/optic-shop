@@ -285,9 +285,75 @@ def company_profile():
     if not session.get("logged_in"):
         return redirect("/login")
 
-    return """
+    company_code = session["company_code"]
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+        company_name = request.form["company_name"]
+        address = request.form["address"]
+        phone = request.form["phone"]
+        email = request.form["email"]
+        receipt_footer = request.form["receipt_footer"]
+
+        c.execute("""
+            UPDATE companies
+            SET company_name=%s,
+                address=%s,
+                phone=%s,
+                email=%s,
+                receipt_footer=%s
+            WHERE company_code=%s
+        """, (
+            company_name,
+            address,
+            phone,
+            email,
+            receipt_footer,
+            company_code
+        ))
+
+        conn.commit()
+
+    c.execute("""
+        SELECT company_code, company_name, address, phone, email, receipt_footer
+        FROM companies
+        WHERE company_code=%s
+    """, (company_code,))
+
+    company = c.fetchone()
+    conn.close()
+
+    return f"""
     <h1>Company Profile</h1>
-    Coming Soon
+
+    <form method="POST">
+
+        Company Code<br>
+        <input type="text" value="{company[0]}" readonly><br><br>
+
+        Company Name<br>
+        <input type="text" name="company_name" value="{company[1] or ''}" required><br><br>
+
+        Address<br>
+        <textarea name="address" rows="4" cols="50">{company[2] or ''}</textarea><br><br>
+
+        Phone<br>
+        <input type="text" name="phone" value="{company[3] or ''}"><br><br>
+
+        Email<br>
+        <input type="email" name="email" value="{company[4] or ''}"><br><br>
+
+        Receipt Footer<br>
+        <textarea name="receipt_footer" rows="3" cols="50">{company[5] or ''}</textarea><br><br>
+
+        <button type="submit">Save</button>
+        
+    </form>
+
+    <br>
+    <a href="/">Back to Dashboard</a>
     """
 
 @app.route("/login", methods=["GET", "POST"])

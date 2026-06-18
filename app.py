@@ -908,7 +908,7 @@ def receipt(sale_id):
     company = c.fetchone()
 
     c.execute("""
-        SELECT id, date, customer, amount, staff, receipt_no, reference_no
+        SELECT id, date, customer, amount, staff, receipt_no, reference_no, remarks
         FROM sales
         WHERE id=%s AND company_code=%s
     """, (sale_id, session["company_code"]))

@@ -195,6 +195,16 @@ def init_db():
     """)
 
     c.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS email TEXT
+    """)
+
+    c.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS receipt_footer TEXT
+    """)
+
+    c.execute("""
     CREATE TABLE IF NOT EXISTS support_tickets (
         id SERIAL PRIMARY KEY,
         company_code TEXT,
@@ -245,6 +255,11 @@ def register_owner():
         return redirect("/login")
 
     return """
+    <h1>Company Profile</h1>
+    Coming Soon
+    """
+
+    return """
     <h1>Register Owner Account</h1>
 
     <form method="POST">
@@ -262,6 +277,17 @@ def register_owner():
 
     <br>
     <a href="/login">Login</a>
+    """
+
+@app.route("/company-profile", methods=["GET", "POST"])
+def company_profile():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    return """
+    <h1>Company Profile</h1>
+    Coming Soon
     """
 
 @app.route("/login", methods=["GET", "POST"])
@@ -480,6 +506,7 @@ def home():
     if session.get("role") in ["admin", "owner"]:
         menu_html += '<a href="/permissions"><button>Permissions</button></a>'
         menu_html += '<a href="/companies"><button>Companies</button></a>'
+        menu_html += '<a href="/company-profile"><button>Company Profile</button></a>'
 
     menu_html += '<a href="/support"><button>Report Problem</button></a>'
     

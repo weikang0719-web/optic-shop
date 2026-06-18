@@ -856,34 +856,97 @@ def sales_list():
 @app.route("/receipt/<int:sale_id>")
 def receipt(sale_id):
 
-    return f"""
-    <h1>Receipt #{sale_id}</h1>
-
-    <h2>ABC OPTICAL</h2>
-
-    <p>This is receipt #{sale_id}</p>
-
-    <button onclick="window.print()">
-        Print Receipt
-    </button>
-
-    <br><br>
-
-    <a href="/sales">Back</a>
-    """
-
-@app.route("/delete-sale/<int:sale_id>")
-def delete_sale(sale_id):
     if not session.get("logged_in"):
         return redirect("/login")
 
     conn = get_conn()
     c = conn.cursor()
-    c.execute("DELETE FROM sales WHERE id=%s", (sale_id,))
-    conn.commit()
+
+    c.execute("""
+        SELECT company_name, address, phone, email, receipt_footer
+        FROM companies
+        WHERE company_code=%s
+    """, (session["company_code"],))
+    company = c.fetchone()
+
+    c.execute("""
+        SELECT id, date, customer, amount, staff
+        FROM sales
+        WHERE id=%s AND company_code=%s
+    """, (sale_id, session["company_code"]))
+    sale = c.fetchone()
+
     conn.close()
 
-    return redirect("/sales-list")
+    if not sale:
+        return "Receipt not found"
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Receipt #{sale[0]}</title>
+        <style>
+            body {{
+                font-family: Arial;
+                width: 300px;
+                margin: 20px auto;
+                font-size: 14px;
+            }}
+            .center {{
+                text-align: center;
+            }}
+            .line {{
+                border-top: 1px dashed #000;
+                margin: 10px 0;
+            }}
+            .total {{
+                font-size: 20px;
+                font-weight: bold;
+            }}
+            @media print {{
+                button, a {{
+                    display: none;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+
+        <div class="center">
+            <h2>{company[0] or ''}</h2>
+            <p>{company[1] or ''}</p>
+            <p>Tel: {company[2] or ''}</p>
+            <p>Email: {company[3] or ''}</p>
+        </div>
+
+        <div class="line"></div>
+
+        <p><b>Receipt No:</b> R{sale[0]:05d}</p>
+        <p><b>Date:</b> {str(sale[1])[:10]}</p>
+        <p><b>Customer:</b> {sale[2]}</p>
+        <p><b>Staff:</b> {sale[4]}</p>
+
+        <div class="line"></div>
+
+        <p>Sales Payment</p>
+        <p class="total">RM {float(sale[3]):,.2f}</p>
+
+        <div class="line"></div>
+
+        <div class="center">
+            <p>{company[4] or 'Thank you for your support.'}</p>
+        </div>
+
+        <br>
+
+        <button onclick="window.print()">Print Receipt</button>
+        <br><br>
+        <a href="/sales-list">Back</a>
+
+    </body>
+    </html>
+    """
 
 @app.route("/edit-sale/<int:sale_id>", methods=["GET", "POST"])
 def edit_sale(sale_id):

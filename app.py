@@ -195,6 +195,11 @@ def init_db():
     """)
 
     c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS remarks TEXT
+    """)
+
+    c.execute("""
     ALTER TABLE expenses
     ADD COLUMN IF NOT EXISTS company_code TEXT
     """)
@@ -727,6 +732,7 @@ def sales():
         reference_no = request.form["reference_no"]
         amount = float(request.form["amount"])
         staff = request.form["staff"]
+        remarks = request.form["remarks"]
 
         conn = get_conn()
         c = conn.cursor()
@@ -736,16 +742,18 @@ def sales():
                 date,
                 customer,
                 reference_no,
+                remarks,
                 amount,
                 staff,
                 company_code
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
             sale_date,
             customer,
             reference_no,
+            remarks,
             amount,
             staff,
             session["company_code"]
@@ -779,6 +787,9 @@ def sales():
 
         <label>Reference No:</label><br>
         <input type="text" name="reference_no"><br><br>
+
+        <label>Remark:</label><br>
+        <textarea name="remarks" rows="3"></textarea><br><br>
 
         <label>Amount (RM):</label><br>
         <input type="number" step="0.01" name="amount" required><br><br>

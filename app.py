@@ -853,6 +853,25 @@ def sales_list():
     <a href="/">Back to Dashboard</a>
     """
 
+@app.route("/receipt/<int:sale_id>")
+def receipt(sale_id):
+
+    return f"""
+    <h1>Receipt #{sale_id}</h1>
+
+    <h2>ABC OPTICAL</h2>
+
+    <p>This is receipt #{sale_id}</p>
+
+    <button onclick="window.print()">
+        Print Receipt
+    </button>
+
+    <br><br>
+
+    <a href="/sales">Back</a>
+    """
+
 @app.route("/delete-sale/<int:sale_id>")
 def delete_sale(sale_id):
     if not session.get("logged_in"):

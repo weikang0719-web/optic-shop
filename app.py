@@ -925,7 +925,7 @@ def receipt(sale_id):
     company = c.fetchone()
 
     c.execute("""
-        SELECT id, date, customer, amount, staff, receipt_no, reference_no, remarks
+        SELECT id, date, customer, amount, staff, receipt_no, reference_no, remarks, payment_method
         FROM sales
         WHERE id=%s AND company_code=%s
     """, (sale_id, session["company_code"]))
@@ -982,6 +982,7 @@ def receipt(sale_id):
         <p><b>Date:</b> {str(sale[1])[:10]}</p>
         <p><b>Customer:</b> {sale[2]}</p>
         <p><b>Staff:</b> {sale[4]}</p>
+        <p><b>Payment Method:</b> {sale[8] or '-'}</p>
         <p><b>Remark:</b> {sale[7] or '-'}</p>
 
         <div class="line"></div>

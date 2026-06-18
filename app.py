@@ -185,6 +185,16 @@ def init_db():
     """)
 
     c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS receipt_no TEXT
+    """)
+
+    c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS reference_no TEXT
+    """)
+
+    c.execute("""
     ALTER TABLE expenses
     ADD COLUMN IF NOT EXISTS company_code TEXT
     """)
@@ -714,6 +724,7 @@ def sales():
     if request.method == "POST":
         sale_date = request.form["sale_date"]
         customer = request.form["customer"]
+        reference_no = request.form["reference_no"]
         amount = float(request.form["amount"])
         staff = request.form["staff"]
 
@@ -724,21 +735,31 @@ def sales():
             INSERT INTO sales (
                 date,
                 customer,
+                reference_no,
                 amount,
                 staff,
                 company_code
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
-    sale_date,
-    customer,
-    amount,
-    staff,
-    session["company_code"]
-))
+            sale_date,
+            customer,
+            reference_no,
+            amount,
+            staff,
+            session["company_code"]
+        ))
 
         sale_id = c.fetchone()[0]
+
+        receipt_no = f"REC-{sale_id:06d}"
+
+        c.execute("""
+            UPDATE sales
+            SET receipt_no=%s
+            WHERE id=%s
+        """, (receipt_no, sale_id))
 
         conn.commit()
         conn.close()
@@ -755,6 +776,9 @@ def sales():
 
         <label>Customer:</label><br>
         <input type="text" name="customer" required><br><br>
+
+        <label>Reference No:</label><br>
+        <input type="text" name="reference_no"><br><br>
 
         <label>Amount (RM):</label><br>
         <input type="number" step="0.01" name="amount" required><br><br>
@@ -873,7 +897,7 @@ def receipt(sale_id):
     company = c.fetchone()
 
     c.execute("""
-        SELECT id, date, customer, amount, staff
+        SELECT id, date, customer, amount, staff, receipt_no, reference_no
         FROM sales
         WHERE id=%s AND company_code=%s
     """, (sale_id, session["company_code"]))
@@ -925,7 +949,8 @@ def receipt(sale_id):
 
         <div class="line"></div>
 
-        <p><b>Receipt No:</b> R{sale[0]:05d}</p>
+        <p><b>Receipt No:</b> {sale[5] or ('REC-' + str(sale[0]).zfill(6))}</p>
+        <p><b>Ref No:</b> {sale[6] or '-'}</p>
         <p><b>Date:</b> {str(sale[1])[:10]}</p>
         <p><b>Customer:</b> {sale[2]}</p>
         <p><b>Staff:</b> {sale[4]}</p>

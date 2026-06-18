@@ -978,19 +978,19 @@ def receipt(sale_id):
         <div class="line"></div>
 
         <p><b>Receipt No:</b> {sale[5] or ('REC-' + str(sale[0]).zfill(6))}</p>
-        <p><b>Ref No:</b> {sale[6] or '-'}</p>
         <p><b>Date:</b> {str(sale[1])[:10]}</p>
+        <p><b>Ref No:</b> {sale[6] or '-'}</p>
         <p><b>Customer:</b> {sale[2]}</p>
-        <p><b>Staff:</b> {sale[4]}</p>
-        <p><b>Payment Method:</b> {sale[8] or '-'}</p>
         <p><b>Remark:</b> {sale[7] or '-'}</p>
+        <p><b>Staff:</b> {sale[4]}</p>
 
         <div class="line"></div>
 
-        <p>Sales Payment</p>
-        <p class="total">RM {float(sale[3]):,.2f}</p>
+        <p class="total"><b>Amount:</b> RM {float(sale[3]):,.2f}</p>
 
         <div class="line"></div>
+
+        <p><b>Payment Method:</b> {sale[8] or '-'}</p>
 
         <div class="center">
             <p>{company[4] or 'Thank you for your support.'}</p>

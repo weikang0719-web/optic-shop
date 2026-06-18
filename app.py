@@ -729,18 +729,21 @@ def sales():
                 company_code
             )
             VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
         """, (
-        sale_date,
-        customer,
-        amount,
-        staff,
-        session["company_code"]
-    ))
+    sale_date,
+    customer,
+    amount,
+    staff,
+    session["company_code"]
+))
+
+        sale_id = c.fetchone()[0]
 
         conn.commit()
         conn.close()
 
-        return redirect("/sales-list")
+        return redirect(f"/receipt/{sale_id}")
 
     return f"""
     <h1>Add Sales</h1>

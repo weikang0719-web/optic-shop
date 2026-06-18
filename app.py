@@ -200,6 +200,11 @@ def init_db():
     """)
 
     c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS payment_method TEXT
+    """)
+
+    c.execute("""
     ALTER TABLE expenses
     ADD COLUMN IF NOT EXISTS company_code TEXT
     """)
@@ -733,6 +738,7 @@ def sales():
         amount = float(request.form["amount"])
         staff = request.form["staff"]
         remarks = request.form["remarks"]
+        payment_method = request.form["payment_method"]
 
         conn = get_conn()
         c = conn.cursor()
@@ -743,11 +749,12 @@ def sales():
                 customer,
                 reference_no,
                 remarks,
+                payment_method,
                 amount,
                 staff,
                 company_code
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
             sale_date,
@@ -790,6 +797,15 @@ def sales():
 
         <label>Remark:</label><br>
         <textarea name="remarks" rows="3"></textarea><br><br>
+
+        <label>Payment Method:</label><br>
+        <select name="payment_method" required>
+            <option value="Cash">Cash</option>
+            <option value="Debit Card">Debit Card</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="DuitNow">DuitNow</option>
+            <option value="Atome">Atome</option>
+        </select><br><br>
 
         <label>Amount (RM):</label><br>
         <input type="number" step="0.01" name="amount" required><br><br>

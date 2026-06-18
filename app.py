@@ -349,7 +349,7 @@ def company_profile():
         <textarea name="receipt_footer" rows="3" cols="50">{company[5] or ''}</textarea><br><br>
 
         <button type="submit">Save</button>
-        
+
     </form>
 
     <br>
@@ -818,6 +818,7 @@ def sales_list():
             <td>
                 <a href="/edit-sale/{r[0]}">Edit</a> |
                 <a href="/delete-sale/{r[0]}" onclick="return confirm('Delete this sale?')">Delete</a>
+                <a href="/receipt/{r[0]}">Print</a>
             </td>
         </tr>
         """

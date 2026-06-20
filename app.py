@@ -3058,7 +3058,6 @@ def stock():
         commission = float(request.form["commission"] or 0)
         minimum_selling_price = float(request.form["minimum_selling_price"] or 0)
         supplier = request.form["supplier"]
-        qty = int(request.form["qty"] or 0)
 
         c.execute("""
             INSERT INTO stock (
@@ -3080,7 +3079,7 @@ def stock():
             commission,
             minimum_selling_price,
             supplier,
-            qty
+            0
         ))
 
         conn.commit()
@@ -3139,9 +3138,6 @@ def stock():
 
         Supplier:<br>
         <input type="text" name="supplier"><br><br>
-
-        Quantity:<br>
-        <input type="number" name="qty" value="0"><br><br>
 
         <button type="submit">Add Stock</button>
     </form>

@@ -867,11 +867,11 @@ def sales_list():
         rows += f"""
         <tr>
             <td>{str(r[4])[:10]}</td>
-            <td>{r[5] or '-'}</td>
+            <td>{r[5] or ('REC-' + str(r[0]).zfill(6))}</td>
             <td>{r[1]}</td>
             <td>{r[6] or '-'}</td>
             <td>{r[7] or '-'}</td>
-            <td>RM {float(r[2]):,.2f}</td>
+            <td style="text-align:right">RM {float(r[2]):,.2f}</td>
             <td>{r[3]}</td>
             <td>
                 <a href="/edit-sale/{r[0]}">Edit</a> |

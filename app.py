@@ -3276,10 +3276,28 @@ def stock_movement():
         movement_date = request.form["movement_date"]
         movement_type = request.form["movement_type"]
         reference_no = request.form["reference_no"]
-        supplier_id = request.form["supplier_id"]
+        supplier_id = request.form["supplier_id"] or None
         item_id = request.form["item_id"]
         qty = int(request.form["qty"])
         note = request.form["note"]
+
+        c.execute("""
+            SELECT qty
+            FROM stock
+            WHERE id=%s AND company_code=%s
+        """, (item_id, session["company_code"]))
+
+        stock_item = c.fetchone()
+
+        if not stock_item:
+            conn.close()
+            return "Stock item not found"
+
+        current_qty = stock_item[0]
+
+        if movement_type == "OUT" and current_qty < qty:
+            conn.close()
+            return f"Not enough stock. Current Qty: {current_qty}"
 
         c.execute("""
             INSERT INTO stock_movements (
@@ -3305,26 +3323,28 @@ def stock_movement():
         ))
 
         if movement_type == "IN":
-
             c.execute("""
                 UPDATE stock
                 SET qty = qty + %s
-                WHERE id=%s
-            """, (qty, item_id))
+                WHERE id=%s AND company_code=%s
+            """, (qty, item_id, session["company_code"]))
 
-        else:
-
+        if movement_type == "OUT":
             c.execute("""
                 UPDATE stock
                 SET qty = qty - %s
-                WHERE id=%s
-            """, (qty, item_id))
+                WHERE id=%s AND company_code=%s
+            """, (qty, item_id, session["company_code"]))
 
         conn.commit()
+        conn.close()
+
+        return redirect("/stock-movement")
 
     from_date = request.args.get("from_date", "")
     to_date = request.args.get("to_date", "")
     ref_search = request.args.get("reference_no", "")
+    supplier_filter = request.args.get("supplier_id", "")
 
     c.execute("""
         SELECT id, supplier_name
@@ -3336,7 +3356,7 @@ def stock_movement():
     suppliers = c.fetchall()
 
     c.execute("""
-        SELECT id, item_name
+        SELECT id, item_name, qty
         FROM stock
         WHERE company_code=%s
         ORDER BY item_name
@@ -3344,18 +3364,19 @@ def stock_movement():
 
     items = c.fetchall()
 
-    supplier_options = ""
+    supplier_options = '<option value="">All Suppliers</option>'
 
     for s in suppliers:
+        selected = "selected" if str(s[0]) == supplier_filter else ""
         supplier_options += f"""
-        <option value="{s[0]}">{s[1]}</option>
+        <option value="{s[0]}" {selected}>{s[1]}</option>
         """
 
     item_options = ""
 
     for i in items:
         item_options += f"""
-        <option value="{i[0]}">{i[1]}</option>
+        <option value="{i[0]}">{i[1]} (Current Qty: {i[2]})</option>
         """
 
     query = """
@@ -3388,6 +3409,10 @@ def stock_movement():
         query += " AND sm.reference_no ILIKE %s"
         params.append(f"%{ref_search}%")
 
+    if supplier_filter:
+        query += " AND sm.supplier_id=%s"
+        params.append(supplier_filter)
+
     query += """
     ORDER BY sm.movement_date DESC, sm.id DESC
     """
@@ -3404,7 +3429,7 @@ def stock_movement():
         <tr>
             <td>{r[1]}</td>
             <td>{r[2]}</td>
-            <td>{r[3]}</td>
+            <td>{r[3] or ''}</td>
             <td>{r[4] or ''}</td>
             <td>{r[5] or ''}</td>
             <td align="right">{r[6]}</td>
@@ -3433,16 +3458,17 @@ def stock_movement():
 
     Supplier:<br>
     <select name="supplier_id">
+        <option value="">-</option>
         {supplier_options}
     </select><br><br>
 
     Item:<br>
-    <select name="item_id">
+    <select name="item_id" required>
         {item_options}
     </select><br><br>
 
     Qty:<br>
-    <input type="number" name="qty" required><br><br>
+    <input type="number" name="qty" min="1" required><br><br>
 
     Note:<br>
     <textarea name="note"></textarea><br><br>
@@ -3456,13 +3482,18 @@ def stock_movement():
     <form method="GET">
 
     From:
-    <input type="date" name="from_date">
+    <input type="date" name="from_date" value="{from_date}">
 
     To:
-    <input type="date" name="to_date">
+    <input type="date" name="to_date" value="{to_date}">
 
     Ref No:
-    <input type="text" name="reference_no">
+    <input type="text" name="reference_no" value="{ref_search}">
+
+    Supplier:
+    <select name="supplier_id">
+        {supplier_options}
+    </select>
 
     <button type="submit">Search</button>
 
@@ -3485,7 +3516,7 @@ def stock_movement():
         {rows}
 
     </table>
-    
+
     <br>
     <a href="/">Back to Dashboard</a>
     """

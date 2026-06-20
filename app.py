@@ -3485,6 +3485,9 @@ def stock_movement():
         {rows}
 
     </table>
+    
+    <br>
+    <a href="/">Back to Dashboard</a>
     """
 
 @app.route("/logout")

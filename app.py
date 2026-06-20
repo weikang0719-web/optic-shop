@@ -236,6 +236,21 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS stock (
+        id SERIAL PRIMARY KEY,
+        company_code TEXT,
+        item_code TEXT,
+        item_name TEXT,
+        cost REAL DEFAULT 0,
+        commission REAL DEFAULT 0,
+        minimum_selling_price REAL DEFAULT 0,
+        supplier TEXT,
+        qty INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -593,6 +608,7 @@ def home():
         menu_html += '<a href="/permissions"><button>Permissions</button></a>'
         menu_html += '<a href="/companies"><button>Companies</button></a>'
         menu_html += '<a href="/company-profile"><button>Company Profile</button></a>'
+        menu_html += '<a href="/stock"><button>Stock</button></a>'
 
     menu_html += '<a href="/support"><button>Report Problem</button></a>'
     
@@ -2961,6 +2977,131 @@ def support_tickets():
 
     <br>
     <a href="/admin">Back</a>
+    """
+
+@app.route("/stock", methods=["GET", "POST"])
+def stock():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+        item_code = request.form["item_code"]
+        item_name = request.form["item_name"]
+        cost = float(request.form["cost"] or 0)
+        commission = float(request.form["commission"] or 0)
+        minimum_selling_price = float(request.form["minimum_selling_price"] or 0)
+        supplier = request.form["supplier"]
+        qty = int(request.form["qty"] or 0)
+
+        c.execute("""
+            INSERT INTO stock (
+                company_code,
+                item_code,
+                item_name,
+                cost,
+                commission,
+                minimum_selling_price,
+                supplier,
+                qty
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            session["company_code"],
+            item_code,
+            item_name,
+            cost,
+            commission,
+            minimum_selling_price,
+            supplier,
+            qty
+        ))
+
+        conn.commit()
+
+    if session.get("role") == "admin":
+        c.execute("""
+            SELECT id, item_code, item_name, cost, commission,
+                   minimum_selling_price, supplier, qty
+            FROM stock
+            ORDER BY item_name
+        """)
+    else:
+        c.execute("""
+            SELECT id, item_code, item_name, cost, commission,
+                   minimum_selling_price, supplier, qty
+            FROM stock
+            WHERE company_code=%s
+            ORDER BY item_name
+        """, (session["company_code"],))
+
+    items = c.fetchall()
+    conn.close()
+
+    rows = ""
+    for i in items:
+        rows += f"""
+        <tr>
+            <td>{i[1]}</td>
+            <td>{i[2]}</td>
+            <td align="right">RM {float(i[3]):,.2f}</td>
+            <td align="right">RM {float(i[4]):,.2f}</td>
+            <td align="right">RM {float(i[5]):,.2f}</td>
+            <td>{i[6]}</td>
+            <td align="center">{i[7]}</td>
+        </tr>
+        """
+
+    return f"""
+    <h1>Stock Management</h1>
+
+    <form method="POST">
+        Item Code:<br>
+        <input type="text" name="item_code" required><br><br>
+
+        Item Name:<br>
+        <input type="text" name="item_name" required><br><br>
+
+        Cost:<br>
+        <input type="number" step="0.01" name="cost" value="0"><br><br>
+
+        Commission:<br>
+        <input type="number" step="0.01" name="commission" value="0"><br><br>
+
+        Minimum Selling Price:<br>
+        <input type="number" step="0.01" name="minimum_selling_price" value="0"><br><br>
+
+        Supplier:<br>
+        <input type="text" name="supplier"><br><br>
+
+        Quantity:<br>
+        <input type="number" name="qty" value="0"><br><br>
+
+        <button type="submit">Add Stock</button>
+    </form>
+
+    <hr>
+
+    <h2>Stock List</h2>
+
+    <table border="1" cellpadding="8">
+        <tr>
+            <th>Code</th>
+            <th>Item</th>
+            <th>Cost</th>
+            <th>Commission</th>
+            <th>Min Selling Price</th>
+            <th>Supplier</th>
+            <th>Qty</th>
+        </tr>
+        {rows}
+    </table>
+
+    <br>
+    <a href="/">Back Dashboard</a>
     """
 
 @app.route("/logout")

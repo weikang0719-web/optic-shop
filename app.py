@@ -280,6 +280,11 @@ def init_db():
     """)
 
     c.execute("""
+    ALTER TABLE stock_movements
+    ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE'
+    """)
+
+    c.execute("""
     ALTER TABLE companies
     ADD COLUMN IF NOT EXISTS low_stock_alert_enabled BOOLEAN DEFAULT FALSE
     """)
@@ -3308,7 +3313,8 @@ def stock_movement():
                 supplier_id,
                 item_id,
                 qty,
-                note
+                note,
+                status
             )
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
@@ -3319,7 +3325,8 @@ def stock_movement():
             supplier_id,
             item_id,
             qty,
-            note
+            note,
+            "ACTIVE"
         ))
 
         if movement_type == "IN":
@@ -3380,19 +3387,20 @@ def stock_movement():
         """
 
     query = """
-    SELECT
-        sm.id,
-        sm.movement_date,
-        sm.movement_type,
-        sm.reference_no,
-        sp.supplier_name,
-        st.item_name,
-        sm.qty,
-        sm.note
-    FROM stock_movements sm
-    LEFT JOIN suppliers sp ON sm.supplier_id=sp.id
-    LEFT JOIN stock st ON sm.item_id=st.id
-    WHERE sm.company_code=%s
+        SELECT
+            sm.id,
+            sm.movement_date,
+            sm.movement_type,
+            sm.reference_no,
+            sp.supplier_name,
+            st.item_name,
+            sm.qty,
+            sm.note,
+            sm.status
+        FROM stock_movements sm
+        LEFT JOIN suppliers sp ON sm.supplier_id = sp.id
+        LEFT JOIN stock st ON sm.item_id = st.id
+        WHERE sm.company_code=%s
     """
 
     params = [session["company_code"]]
@@ -3429,11 +3437,27 @@ def stock_movement():
         <tr>
             <td>{r[1]}</td>
             <td>{r[2]}</td>
-            <td>{r[3] or ''}</td>
-            <td>{r[4] or ''}</td>
-            <td>{r[5] or ''}</td>
-            <td align="right">{r[6]}</td>
+            <td>{r[3] or '-'}</td>
+            <td>{r[4] or '-'}</td>
+            <td>{r[5] or '-'}</td>
+            <td align="center">{r[6]}</td>
             <td>{r[7] or ''}</td>
+            <td>{r[8] or 'ACTIVE'}</td>
+            <td>
+        """
+
+        if (r[8] or "ACTIVE") == "ACTIVE":
+            rows += f"""
+            <a href="/void-stock-movement/{r[0]}"
+               onclick="return confirm('Void this movement? Stock quantity will be reversed.')">
+               Void
+            </a>
+            """
+        else:
+            rows += "VOIDED"
+
+        rows += """
+            </td>
         </tr>
         """
 
@@ -3511,6 +3535,8 @@ def stock_movement():
             <th>Item</th>
             <th>Qty</th>
             <th>Note</th>
+            <th>Status</th>
+            <th>Action</th>
         </tr>
 
         {rows}
@@ -3520,6 +3546,69 @@ def stock_movement():
     <br>
     <a href="/">Back to Dashboard</a>
     """
+
+@app.route("/void-stock-movement/<int:id>")
+def void_stock_movement(id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT movement_type, item_id, qty, status
+        FROM stock_movements
+        WHERE id=%s AND company_code=%s
+    """, (id, session["company_code"]))
+
+    rec = c.fetchone()
+
+    if not rec:
+        conn.close()
+        return "Stock movement not found"
+
+    movement_type, item_id, qty, status = rec
+
+    if status == "VOID":
+        conn.close()
+        return redirect("/stock-movement")
+
+    c.execute("""
+        SELECT qty
+        FROM stock
+        WHERE id=%s AND company_code=%s
+    """, (item_id, session["company_code"]))
+
+    stock_item = c.fetchone()
+
+    if not stock_item:
+        conn.close()
+        return "Stock item not found"
+
+    current_qty = stock_item[0] or 0
+
+    if movement_type == "IN":
+        new_qty = current_qty - qty
+    else:
+        new_qty = current_qty + qty
+
+    c.execute("""
+        UPDATE stock
+        SET qty=%s
+        WHERE id=%s AND company_code=%s
+    """, (new_qty, item_id, session["company_code"]))
+
+    c.execute("""
+        UPDATE stock_movements
+        SET status='VOID'
+        WHERE id=%s AND company_code=%s
+    """, (id, session["company_code"]))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/stock-movement")
 
 @app.route("/logout")
 def logout():

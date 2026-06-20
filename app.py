@@ -388,9 +388,9 @@ def company_profile():
             phone,
             email,
             receipt_footer,
-            company_code,
             low_stock_alert_enabled,
             low_stock_threshold,
+            session["company_code"]
         ))
 
         conn.commit()

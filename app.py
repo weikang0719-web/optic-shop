@@ -251,6 +251,19 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS suppliers (
+        id SERIAL PRIMARY KEY,
+        company_code TEXT,
+        supplier_code TEXT,
+        supplier_name TEXT,
+        phone TEXT,
+        address TEXT,
+        account_no TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -609,6 +622,7 @@ def home():
         menu_html += '<a href="/companies"><button>Companies</button></a>'
         menu_html += '<a href="/company-profile"><button>Company Profile</button></a>'
         menu_html += '<a href="/stock"><button>Stock</button></a>'
+        menu_html += '<a href="/suppliers"><button>Suppliers</button></a>'
 
     menu_html += '<a href="/support"><button>Report Problem</button></a>'
     
@@ -3096,6 +3110,106 @@ def stock():
             <th>Min Selling Price</th>
             <th>Supplier</th>
             <th>Qty</th>
+        </tr>
+        {rows}
+    </table>
+
+    <br>
+    <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/suppliers", methods=["GET", "POST"])
+def suppliers():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+        supplier_code = request.form["supplier_code"]
+        supplier_name = request.form["supplier_name"]
+        phone = request.form["phone"]
+        address = request.form["address"]
+        account_no = request.form["account_no"]
+
+        c.execute("""
+            INSERT INTO suppliers (
+                company_code,
+                supplier_code,
+                supplier_name,
+                phone,
+                address,
+                account_no
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            session["company_code"],
+            supplier_code,
+            supplier_name,
+            phone,
+            address,
+            account_no
+        ))
+
+        conn.commit()
+
+    c.execute("""
+        SELECT id, supplier_code, supplier_name, phone, address, account_no
+        FROM suppliers
+        WHERE company_code=%s
+        ORDER BY supplier_name
+    """, (session["company_code"],))
+
+    suppliers_list = c.fetchall()
+    conn.close()
+
+    rows = ""
+    for s in suppliers_list:
+        rows += f"""
+        <tr>
+            <td>{s[1]}</td>
+            <td>{s[2]}</td>
+            <td>{s[3] or ''}</td>
+            <td>{s[4] or ''}</td>
+            <td>{s[5] or ''}</td>
+        </tr>
+        """
+
+    return f"""
+    <h1>Supplier Management</h1>
+
+    <form method="POST">
+        Supplier Code:<br>
+        <input type="text" name="supplier_code" required><br><br>
+
+        Supplier Company Name:<br>
+        <input type="text" name="supplier_name" required><br><br>
+
+        Tel No:<br>
+        <input type="text" name="phone"><br><br>
+
+        Address:<br>
+        <textarea name="address" rows="3" cols="50"></textarea><br><br>
+
+        Account No:<br>
+        <input type="text" name="account_no"><br><br>
+
+        <button type="submit">Add Supplier</button>
+    </form>
+
+    <hr>
+
+    <h2>Supplier List</h2>
+
+    <table border="1" cellpadding="8">
+        <tr>
+            <th>Code</th>
+            <th>Company Name</th>
+            <th>Tel No</th>
+            <th>Address</th>
+            <th>Account No</th>
         </tr>
         {rows}
     </table>

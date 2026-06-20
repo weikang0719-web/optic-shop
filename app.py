@@ -3108,7 +3108,6 @@ def stock():
                    minimum_selling_price, supplier, qty
             FROM stock
             WHERE company_code=%s
-            AND COALESCE(is_active,TRUE)=TRUE
             ORDER BY item_name
         """, (session["company_code"],))
 

@@ -264,6 +264,21 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS stock_movements (
+        id SERIAL PRIMARY KEY,
+        company_code TEXT,
+        movement_date TEXT,
+        movement_type TEXT,
+        reference_no TEXT,
+        supplier_id INTEGER,
+        item_id INTEGER,
+        qty INTEGER DEFAULT 0,
+        note TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -623,6 +638,7 @@ def home():
         menu_html += '<a href="/company-profile"><button>Company Profile</button></a>'
         menu_html += '<a href="/stock"><button>Stock</button></a>'
         menu_html += '<a href="/suppliers"><button>Suppliers</button></a>'
+        menu_html += '<a href="/stock-movement"><button>Stock Purchase In / Out</button></a>'
 
     menu_html += '<a href="/support"><button>Report Problem</button></a>'
     
@@ -3216,6 +3232,231 @@ def suppliers():
 
     <br>
     <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/stock-movement", methods=["GET", "POST"])
+def stock_movement():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+
+        movement_date = request.form["movement_date"]
+        movement_type = request.form["movement_type"]
+        reference_no = request.form["reference_no"]
+        supplier_id = request.form["supplier_id"]
+        item_id = request.form["item_id"]
+        qty = int(request.form["qty"])
+        note = request.form["note"]
+
+        c.execute("""
+            INSERT INTO stock_movements (
+                company_code,
+                movement_date,
+                movement_type,
+                reference_no,
+                supplier_id,
+                item_id,
+                qty,
+                note
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            session["company_code"],
+            movement_date,
+            movement_type,
+            reference_no,
+            supplier_id,
+            item_id,
+            qty,
+            note
+        ))
+
+        if movement_type == "IN":
+
+            c.execute("""
+                UPDATE stock
+                SET qty = qty + %s
+                WHERE id=%s
+            """, (qty, item_id))
+
+        else:
+
+            c.execute("""
+                UPDATE stock
+                SET qty = qty - %s
+                WHERE id=%s
+            """, (qty, item_id))
+
+        conn.commit()
+
+    from_date = request.args.get("from_date", "")
+    to_date = request.args.get("to_date", "")
+    ref_search = request.args.get("reference_no", "")
+
+    c.execute("""
+        SELECT id, supplier_name
+        FROM suppliers
+        WHERE company_code=%s
+        ORDER BY supplier_name
+    """, (session["company_code"],))
+
+    suppliers = c.fetchall()
+
+    c.execute("""
+        SELECT id, item_name
+        FROM stock
+        WHERE company_code=%s
+        ORDER BY item_name
+    """, (session["company_code"],))
+
+    items = c.fetchall()
+
+    supplier_options = ""
+
+    for s in suppliers:
+        supplier_options += f"""
+        <option value="{s[0]}">{s[1]}</option>
+        """
+
+    item_options = ""
+
+    for i in items:
+        item_options += f"""
+        <option value="{i[0]}">{i[1]}</option>
+        """
+
+    query = """
+    SELECT
+        sm.id,
+        sm.movement_date,
+        sm.movement_type,
+        sm.reference_no,
+        sp.supplier_name,
+        st.item_name,
+        sm.qty,
+        sm.note
+    FROM stock_movements sm
+    LEFT JOIN suppliers sp ON sm.supplier_id=sp.id
+    LEFT JOIN stock st ON sm.item_id=st.id
+    WHERE sm.company_code=%s
+    """
+
+    params = [session["company_code"]]
+
+    if from_date:
+        query += " AND sm.movement_date >= %s"
+        params.append(from_date)
+
+    if to_date:
+        query += " AND sm.movement_date <= %s"
+        params.append(to_date)
+
+    if ref_search:
+        query += " AND sm.reference_no ILIKE %s"
+        params.append(f"%{ref_search}%")
+
+    query += """
+    ORDER BY sm.movement_date DESC, sm.id DESC
+    """
+
+    c.execute(query, tuple(params))
+
+    records = c.fetchall()
+
+    rows = ""
+
+    for r in records:
+
+        rows += f"""
+        <tr>
+            <td>{r[1]}</td>
+            <td>{r[2]}</td>
+            <td>{r[3]}</td>
+            <td>{r[4] or ''}</td>
+            <td>{r[5] or ''}</td>
+            <td align="right">{r[6]}</td>
+            <td>{r[7] or ''}</td>
+        </tr>
+        """
+
+    conn.close()
+
+    return f"""
+    <h1>Stock Purchase In / Out</h1>
+
+    <form method="POST">
+
+    Date:<br>
+    <input type="date" name="movement_date" required><br><br>
+
+    Type:<br>
+    <select name="movement_type">
+        <option value="IN">Receive Stock</option>
+        <option value="OUT">Stock Out</option>
+    </select><br><br>
+
+    Reference No:<br>
+    <input type="text" name="reference_no"><br><br>
+
+    Supplier:<br>
+    <select name="supplier_id">
+        {supplier_options}
+    </select><br><br>
+
+    Item:<br>
+    <select name="item_id">
+        {item_options}
+    </select><br><br>
+
+    Qty:<br>
+    <input type="number" name="qty" required><br><br>
+
+    Note:<br>
+    <textarea name="note"></textarea><br><br>
+
+    <button type="submit">Save Movement</button>
+
+    </form>
+
+    <hr>
+
+    <form method="GET">
+
+    From:
+    <input type="date" name="from_date">
+
+    To:
+    <input type="date" name="to_date">
+
+    Ref No:
+    <input type="text" name="reference_no">
+
+    <button type="submit">Search</button>
+
+    </form>
+
+    <br>
+
+    <table border="1" cellpadding="8">
+
+        <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Reference No</th>
+            <th>Supplier</th>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Note</th>
+        </tr>
+
+        {rows}
+
+    </table>
     """
 
 @app.route("/logout")

@@ -845,14 +845,14 @@ def sales_list():
 
     if session.get("role") == "admin":
         c.execute("""
-            SELECT id, customer, amount, staff, date
+            SELECT id, customer, amount, staff, date, receipt_no, reference_no, payment_method
             FROM sales
             WHERE date BETWEEN %s AND %s
             ORDER BY date DESC, id DESC
         """, (from_date, to_date))
     else:
         c.execute("""
-            SELECT id, customer, amount, staff, date
+            SELECT id, customer, amount, staff, date, receipt_no, reference_no, payment_method
             FROM sales
             WHERE date BETWEEN %s AND %s
             AND company_code=%s
@@ -867,7 +867,10 @@ def sales_list():
         rows += f"""
         <tr>
             <td>{str(r[4])[:10]}</td>
+            <td>{r[5] or '-'}</td>
             <td>{r[1]}</td>
+            <td>{r[6] or '-'}</td>
+            <td>{r[7] or '-'}</td>
             <td>RM {float(r[2]):,.2f}</td>
             <td>{r[3]}</td>
             <td>
@@ -896,7 +899,10 @@ def sales_list():
     <table border="1" cellpadding="10">
         <tr>
             <th>Date</th>
+            <th>Receipt No</th>
             <th>Customer</th>
+            <th>Ref No</th>
+            <th>Payment</th>
             <th>Amount</th>
             <th>Staff</th>
             <th>Action</th>

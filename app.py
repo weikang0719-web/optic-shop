@@ -300,6 +300,11 @@ def init_db():
     """)
 
     c.execute("""
+    ALTER TABLE stock
+    ADD COLUMN IF NOT EXISTS selling_price NUMERIC(12,2) DEFAULT 0
+    """)
+
+    c.execute("""
     UPDATE stock
     SET is_active=TRUE
     WHERE is_active IS NULL
@@ -3067,6 +3072,7 @@ def stock():
         item_name = request.form["item_name"]
         cost = float(request.form["cost"] or 0)
         commission = float(request.form["commission"] or 0)
+        selling_price = float(request.form["selling_price"] or 0)
         minimum_selling_price = float(request.form["minimum_selling_price"] or 0)
         supplier = request.form["supplier"]
 
@@ -3077,6 +3083,7 @@ def stock():
                 item_name,
                 cost,
                 commission,
+                selling_price,
                 minimum_selling_price,
                 supplier,
                 qty
@@ -3088,6 +3095,7 @@ def stock():
             item_name,
             cost,
             commission,
+            selling_price,
             minimum_selling_price,
             supplier,
             0
@@ -3097,15 +3105,15 @@ def stock():
 
     if session.get("role") == "admin":
         c.execute("""
-            SELECT id, item_code, item_name, cost, commission,
-                   minimum_selling_price, supplier, qty
+            SELECT id, item_code, item_name, selling_price, cost, commission,
+                   minimum_selling_price, supplier, COALESCE(is_active, TRUE)
             FROM stock
             ORDER BY item_name
         """)
     else:
         c.execute("""
-            SELECT id, item_code, item_name, cost, commission,
-                   minimum_selling_price, supplier, qty
+            SELECT id, item_code, item_name, selling_price, cost, commission,
+                   minimum_selling_price, supplier, COALESCE(is_active, TRUE)
             FROM stock
             WHERE company_code=%s
             ORDER BY item_name
@@ -3116,15 +3124,18 @@ def stock():
 
     rows = ""
     for i in items:
+        status_text = "Active" if i[8] else "Inactive"
+
         rows += f"""
         <tr>
             <td><a href="/stock-item/{i[0]}">{i[1]}</a></td>
             <td>{i[2]}</td>
-            <td align="right">RM {float(i[3]):,.2f}</td>
-            <td align="right">RM {float(i[4]):,.2f}</td>
-            <td align="right">RM {float(i[5]):,.2f}</td>
-            <td>{i[6]}</td>
-            <td align="center">{i[7]}</td>
+            <td align="right">RM {float(i[3] or 0):,.2f}</td>
+            <td align="right">RM {float(i[4] or 0):,.2f}</td>
+            <td align="right">RM {float(i[5] or 0):,.2f}</td>
+            <td align="right">RM {float(i[6] or 0):,.2f}</td>
+            <td>{i[7] or '-'}</td>
+            <td>{status_text}</td>
         </tr>
         """
 
@@ -3144,6 +3155,12 @@ def stock():
         Commission:<br>
         <input type="number" step="0.01" name="commission" value="0"><br><br>
 
+        Selling Price:<br>
+        <input type="number"
+               step="0.01"
+               name="selling_price"
+               value="0"><br><br>
+
         Minimum Selling Price:<br>
         <input type="number" step="0.01" name="minimum_selling_price" value="0"><br><br>
 
@@ -3161,11 +3178,12 @@ def stock():
         <tr>
             <th>Code</th>
             <th>Item</th>
+            <th>Selling Price</th>
             <th>Cost</th>
             <th>Commission</th>
             <th>Min Selling Price</th>
             <th>Supplier</th>
-            <th>Qty</th>
+            <th>Status</th>
         </tr>
         {rows}
     </table>
@@ -3188,10 +3206,7 @@ def stock_item(item_id):
         item_name = request.form["item_name"]
         cost = float(request.form["cost"] or 0)
         commission = float(request.form["commission"] or 0)
-        minimum_selling_price = float(
-            request.form["minimum_selling_price"] or 0
-        )
-
+        minimum_selling_price = float(request.form["minimum_selling_price"] or 0)
         supplier = request.form["supplier"]
         is_active = request.form.get("is_active") == "Y"
 

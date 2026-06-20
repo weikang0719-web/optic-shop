@@ -871,7 +871,8 @@ def sales_list():
             <td>{r[1]}</td>
             <td>{r[6] or '-'}</td>
             <td>{r[7] or '-'}</td>
-            <td align="right">RM {float(r[2]):,.2f}</td>
+            <td style="text-align:right; width:120px;">
+                RM {float(r[2]):,.2f}
             <td>{r[3]}</td>
             <td>
                 <a href="/edit-sale/{r[0]}">Edit</a> |
@@ -903,7 +904,7 @@ def sales_list():
             <th>Customer</th>
             <th>Ref No</th>
             <th>Payment</th>
-            <th>Amount</th>
+            <th style="text-align:right; width:120px;">Amount</th>
             <th>Staff</th>
             <th>Action</th>
         </tr>

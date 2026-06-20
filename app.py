@@ -294,6 +294,17 @@ def init_db():
     ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER DEFAULT 3
     """)
 
+    c.execute("""
+    ALTER TABLE stock
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
+    """)
+
+    c.execute("""
+    UPDATE stock
+    SET is_active=TRUE
+    WHERE is_active IS NULL
+    """)
+
     conn.commit()
     conn.close()
 
@@ -3097,6 +3108,7 @@ def stock():
                    minimum_selling_price, supplier, qty
             FROM stock
             WHERE company_code=%s
+            AND COALESCE(is_active,TRUE)=TRUE
             ORDER BY item_name
         """, (session["company_code"],))
 
@@ -3107,7 +3119,7 @@ def stock():
     for i in items:
         rows += f"""
         <tr>
-            <td>{i[1]}</td>
+            <td><a href="/stock-item/{i[0]}">{i[1]}</a></td>
             <td>{i[2]}</td>
             <td align="right">RM {float(i[3]):,.2f}</td>
             <td align="right">RM {float(i[4]):,.2f}</td>
@@ -3118,7 +3130,7 @@ def stock():
         """
 
     return f"""
-    <h1>Stock Management</h1>
+    <h1>Stock Item</h1>
 
     <form method="POST">
         Item Code:<br>
@@ -3144,7 +3156,7 @@ def stock():
 
     <hr>
 
-    <h2>Stock List</h2>
+    <h2>Stock Item</h2>
 
     <table border="1" cellpadding="8">
         <tr>
@@ -3161,6 +3173,146 @@ def stock():
 
     <br>
     <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/stock-item/<int:item_id>", methods=["GET", "POST"])
+def stock_item(item_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+
+        item_name = request.form["item_name"]
+        cost = float(request.form["cost"] or 0)
+        commission = float(request.form["commission"] or 0)
+        minimum_selling_price = float(
+            request.form["minimum_selling_price"] or 0
+        )
+
+        supplier = request.form["supplier"]
+        is_active = request.form.get("is_active") == "Y"
+
+        c.execute("""
+            UPDATE stock
+            SET
+                item_name=%s,
+                cost=%s,
+                commission=%s,
+                minimum_selling_price=%s,
+                supplier=%s,
+                is_active=%s
+            WHERE id=%s
+              AND company_code=%s
+        """, (
+            item_name,
+            cost,
+            commission,
+            minimum_selling_price,
+            supplier,
+            is_active,
+            item_id,
+            session["company_code"]
+        ))
+
+        conn.commit()
+
+    c.execute("""
+        SELECT
+            id,
+            item_code,
+            item_name,
+            cost,
+            commission,
+            minimum_selling_price,
+            supplier,
+            qty,
+            COALESCE(is_active, TRUE)
+        FROM stock
+        WHERE id=%s
+          AND company_code=%s
+    """, (
+        item_id,
+        session["company_code"]
+    ))
+
+    item = c.fetchone()
+
+    conn.close()
+
+    if not item:
+        return "Item not found"
+
+    active_checked = "checked" if item[8] else ""
+
+    return f"""
+    <h1>Stock Item Master</h1>
+
+    <form method="POST">
+
+        Item Code<br>
+        <input type="text"
+               value="{item[1]}"
+               readonly><br><br>
+
+        Item Name<br>
+        <input type="text"
+               name="item_name"
+               value="{item[2]}"
+               required><br><br>
+
+        Cost<br>
+        <input type="number"
+               step="0.01"
+               name="cost"
+               value="{item[3]}"><br><br>
+
+        Commission<br>
+        <input type="number"
+               step="0.01"
+               name="commission"
+               value="{item[4]}"><br><br>
+
+        Minimum Selling Price<br>
+        <input type="number"
+               step="0.01"
+               name="minimum_selling_price"
+               value="{item[5]}"><br><br>
+
+        Supplier<br>
+        <input type="text"
+               name="supplier"
+               value="{item[6]}"><br><br>
+
+        Current Stock Balance<br>
+        <input type="text"
+               value="{item[7]}"
+               readonly><br><br>
+
+        <label>
+            <input type="checkbox"
+                   name="is_active"
+                   value="Y"
+                   {active_checked}>
+            Active Item
+        </label>
+
+        <br><br>
+
+        <button type="submit">
+            Save Item
+        </button>
+
+    </form>
+
+    <br>
+
+    <a href="/stock">
+        Back To Stock Item
+    </a>
     """
 
 @app.route("/suppliers", methods=["GET", "POST"])
@@ -3362,6 +3514,7 @@ def stock_movement():
         SELECT id, item_name, qty
         FROM stock
         WHERE company_code=%s
+        AND COALESCE(is_active,TRUE)=TRUE
         ORDER BY item_name
     """, (session["company_code"],))
 

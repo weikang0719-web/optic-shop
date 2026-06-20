@@ -279,6 +279,16 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS low_stock_alert_enabled BOOLEAN DEFAULT FALSE
+    """)
+
+    c.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER DEFAULT 3
+    """)
+
     conn.commit()
     conn.close()
 
@@ -359,6 +369,8 @@ def company_profile():
         phone = request.form["phone"]
         email = request.form["email"]
         receipt_footer = request.form["receipt_footer"]
+        low_stock_alert_enabled = "low_stock_alert_enabled" in request.form
+        low_stock_threshold = int(request.form["low_stock_threshold"] or 3)
 
         c.execute("""
             UPDATE companies
@@ -366,7 +378,9 @@ def company_profile():
                 address=%s,
                 phone=%s,
                 email=%s,
-                receipt_footer=%s
+                receipt_footer=%s,
+                low_stock_alert_enabled=%s,
+                low_stock_threshold=%s
             WHERE company_code=%s
         """, (
             company_name,
@@ -374,19 +388,24 @@ def company_profile():
             phone,
             email,
             receipt_footer,
-            company_code
+            company_code,
+            low_stock_alert_enabled,
+            low_stock_threshold,
         ))
 
         conn.commit()
 
     c.execute("""
-        SELECT company_code, company_name, address, phone, email, receipt_footer
+        SELECT company_code, company_name, address, phone, email, receipt_footer,
+        low_stock_threshold, low_stock_alert_enabled
         FROM companies
         WHERE company_code=%s
     """, (company_code,))
 
     company = c.fetchone()
     conn.close()
+
+    checked_alert = "checked" if company[7] else ""
 
     return f"""
     <h1>Company Profile</h1>
@@ -410,6 +429,15 @@ def company_profile():
 
         Receipt Footer<br>
         <textarea name="receipt_footer" rows="3" cols="50">{company[5] or ''}</textarea><br><br>
+
+        Low Stock Alert:<br>
+        <label>
+            <input type="checkbox" name="low_stock_alert_enabled" {checked_alert}>
+            Enable Low Stock Alert
+        </label><br><br>
+
+        Low Stock Threshold:<br>
+        <input type="number" name="low_stock_threshold" value="{company[6] or 3}" min="0"><br><br>
 
         <button type="submit">Save</button>
 

@@ -739,6 +739,9 @@ def home():
     
     menu_html += '<a href="/logout"><button>Logout</button></a>'
 
+    if session.get("role") == "admin":
+        menu_html += '<a href="/reset-company-data"><button style="color:red;">Reset Company Data</button></a>'
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -4239,6 +4242,74 @@ def void_stock_movement(id):
     conn.close()
 
     return redirect("/stock-movement")
+
+@app.route("/reset-company-data", methods=["GET", "POST"])
+def reset_company_data():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    if session.get("role") != "admin":
+        return "Access denied"
+
+    company_code = request.args.get("company_code", "")
+
+    if request.method == "POST":
+        company_code = request.form["company_code"]
+        confirm = request.form["confirm"]
+
+        if confirm != "RESET":
+            return "Please type RESET to confirm"
+
+        conn = get_conn()
+        c = conn.cursor()
+
+        tables = [
+            "sales",
+            "expenses",
+            "salaries",
+            "stock_movements",
+            "stock_adjustments",
+            "stock",
+            "suppliers"
+        ]
+
+        for table in tables:
+            c.execute(
+                f"DELETE FROM {table} WHERE company_code=%s",
+                (company_code,)
+            )
+
+        conn.commit()
+        conn.close()
+
+        return f"""
+        <h1>Reset Completed</h1>
+        <p>All data for company <b>{company_code}</b> has been cleared.</p>
+        <a href="/">Back Dashboard</a>
+        """
+
+    return f"""
+    <h1>Reset Company Data</h1>
+
+    <form method="POST">
+
+        Company Code:<br>
+        <input type="text" name="company_code" value="{company_code}" required><br><br>
+
+        Type RESET to confirm:<br>
+        <input type="text" name="confirm" required><br><br>
+
+        <button type="submit" style="color:red;"
+            onclick="return confirm('Are you sure? This will delete sales, stock, suppliers, expenses and salary data.')">
+            RESET DATA
+        </button>
+
+    </form>
+
+    <br>
+    <a href="/">Back Dashboard</a>
+    """
 
 @app.route("/logout")
 def logout():

@@ -341,6 +341,19 @@ def init_db():
     ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS stock_adjustments (
+        id SERIAL PRIMARY KEY,
+        company_code TEXT,
+        adjustment_date DATE,
+        item_id INTEGER,
+        qty_change INTEGER,
+        reason TEXT,
+        created_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -719,6 +732,7 @@ def home():
         menu_html += '<a href="/stock"><button>Stock</button></a>'
         menu_html += '<a href="/suppliers"><button>Suppliers</button></a>'
         menu_html += '<a href="/stock-movement"><button>Stock Purchase In / Out</button></a>'
+        menu_html += '<a href="/stock-adjustment"><button>Stock Adjustment</button></a>'
 
     menu_html += '<a href="/support"><button>Report Problem</button></a>'
     
@@ -3221,6 +3235,134 @@ def stock():
 
     <br>
     <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/stock-adjustment", methods=["GET", "POST"])
+def stock_adjustment():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+
+        item_id = int(request.form["item_id"])
+        qty_change = int(request.form["qty_change"])
+        reason = request.form["reason"]
+
+        c.execute("""
+            INSERT INTO stock_adjustments (
+                company_code,
+                adjustment_date,
+                item_id,
+                qty_change,
+                reason,
+                created_by
+            )
+            VALUES (%s,CURRENT_DATE,%s,%s,%s,%s)
+        """, (
+            session["company_code"],
+            item_id,
+            qty_change,
+            reason,
+            session["username"]
+        ))
+
+        conn.commit()
+
+    c.execute("""
+        SELECT id,item_name
+        FROM stock
+        WHERE company_code=%s
+        AND COALESCE(is_active,TRUE)=TRUE
+        ORDER BY item_name
+    """, (session["company_code"],))
+
+    items = c.fetchall()
+
+    options = ""
+
+    for i in items:
+        options += f"""
+        <option value="{i[0]}">
+            {i[1]}
+        </option>
+        """
+
+    c.execute("""
+        SELECT
+            a.adjustment_date,
+            s.item_name,
+            a.qty_change,
+            a.reason,
+            a.created_by
+        FROM stock_adjustments a
+        JOIN stock s ON s.id=a.item_id
+        WHERE a.company_code=%s
+        ORDER BY a.id DESC
+        LIMIT 100
+    """, (session["company_code"],))
+
+    rows = ""
+
+    for r in c.fetchall():
+
+        rows += f"""
+        <tr>
+            <td>{r[0]}</td>
+            <td>{r[1]}</td>
+            <td>{r[2]}</td>
+            <td>{r[3]}</td>
+            <td>{r[4]}</td>
+        </tr>
+        """
+
+    conn.close()
+
+    return f"""
+    <h1>Stock Adjustment</h1>
+
+    <form method="POST">
+
+        Item:<br>
+        <select name="item_id">
+            {options}
+        </select><br><br>
+
+        Qty Change:<br>
+        <input type="number"
+               name="qty_change"
+               required><br><br>
+
+        Reason:<br>
+        <textarea name="reason"
+                  required></textarea><br><br>
+
+        <button type="submit">
+            Save Adjustment
+        </button>
+
+    </form>
+
+    <hr>
+
+    <h2>Audit Trail</h2>
+
+    <table border="1">
+
+        <tr>
+            <th>Date</th>
+            <th>Item</th>
+            <th>Qty Change</th>
+            <th>Reason</th>
+            <th>User</th>
+        </tr>
+
+        {rows}
+
+    </table>
     """
 
 @app.route("/stock-item/<int:item_id>", methods=["GET", "POST"])

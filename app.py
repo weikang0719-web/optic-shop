@@ -757,6 +757,15 @@ def home():
     
     menu_html += '<a href="/logout"><button>Logout</button></a>'
 
+    c.execute("""
+        SELECT expiry_date
+        FROM companies
+        WHERE company_code=%s
+    """, (session["company_code"],))
+
+    company_row = c.fetchone()
+    expiry_date = company_row[0] if company_row else None
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -828,6 +837,15 @@ button:hover {{
         <div class="header">
             <h1>OPTIC SHOP MANAGEMENT SYSTEM</h1>
             <p>Business Dashboard</p>
+
+            <p style="
+                color:#ffcc00;
+                font-size:18px;
+                font-weight:bold;
+            ">
+                Expiry Date: {expiry_date}
+            </p>
+
             <div id="datetime" style="
                 color:white;
                 font-size:18px;

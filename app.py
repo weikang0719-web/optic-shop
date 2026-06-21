@@ -2605,7 +2605,13 @@ def companies():
     c = conn.cursor()
 
     c.execute("""
-        SELECT id, company_code, company_name, address, phone, is_active, expiry_date
+        SELECT id,
+               company_code,
+               company_name,
+               address,
+               phone,
+               is_active,
+               expiry_date
         FROM companies
         ORDER BY company_name
     """)
@@ -2616,13 +2622,13 @@ def companies():
     rows = ""
 
     for company in companies_list:
+
         status = "ACTIVE" if company[5] else "SUSPENDED"
         expiry = company[6] or "-"
 
         action_text = "Suspend" if company[5] else "Activate"
 
         rows += f"""
-
         <tr>
             <td>{company[0]}</td>
             <td>{company[1]}</td>
@@ -2631,12 +2637,16 @@ def companies():
             <td>{company[4] or ''}</td>
             <td>{status}</td>
             <td>{expiry}</td>
+
             <td>
                 <a href="/toggle-company/{company[0]}">{action_text}</a>
                 |
                 <a href="/edit-company-expiry/{company[0]}">Expiry</a>
                 |
-                <a href="/reset-company-data?company_code={company[1]}">Reset</a>
+                <a href="/reset-company-data?company_code={company[1]}"
+                   onclick="return confirm('Reset all data for this company?')">
+                   Reset Data
+                </a>
             </td>
         </tr>
         """
@@ -2663,37 +2673,12 @@ def companies():
         </tr>
 
         {rows}
+
     </table>
 
     <br>
+
     <a href="/">Back Dashboard</a>
-    """
-
-rows = ""
-
-for company in companies:
-    status = "ACTIVE" if company[5] else "SUSPENDED"
-    expiry = company[6] or "-"
-
-    action_text = "Suspend" if company[5] else "Activate"
-
-    rows += f"""
-    <tr>
-        <td>{company[0]}</td>
-        <td>{company[1]}</td>
-        <td>{company[2]}</td>
-        <td>{company[3] or ''}</td>
-        <td>{company[4] or ''}</td>
-        <td>{status}</td>
-        <td>{expiry}</td>
-        <td>
-            <a href="/toggle-company/{company[0]}">{action_text}</a>
-            |
-            <a href="/edit-company-expiry/{company[0]}">Expiry</a>
-            |
-            <a href="/reset-company-data?company_code={company[1]}">Reset</a>
-        </td>
-    </tr>
     """
 
 @app.route("/edit-company-expiry/<int:company_id>", methods=["GET", "POST"])

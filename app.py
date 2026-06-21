@@ -3250,7 +3250,11 @@ def stock_adjustment():
 
         item_id = int(request.form["item_id"])
         qty_change = int(request.form["qty_change"])
+        adjustment_type = request.form["adjustment_type"]
         reason = request.form["reason"]
+
+    if adjustment_type == "DECREASE":
+        qty_change = qty_change * -1
 
         c.execute("""
             INSERT INTO stock_adjustments (
@@ -3331,7 +3335,15 @@ def stock_adjustment():
             {options}
         </select><br><br>
 
-        Qty Change:<br>
+        Adjustment Type:<br>
+
+        <select name="adjustment_type">
+            <option value="INCREASE">Increase</option>
+            <option value="DECREASE">Decrease</option>
+        </select><br><br>
+
+        Qty:<br>
+
         <input type="number"
                name="qty_change"
                required><br><br>
@@ -3369,7 +3381,7 @@ def stock_adjustment():
     <a href="/">
         <button type="button">Back Dashboard</button>
     </a>
-    
+
     """
 
 @app.route("/stock-item/<int:item_id>", methods=["GET", "POST"])

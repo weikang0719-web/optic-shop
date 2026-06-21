@@ -3258,6 +3258,17 @@ def stock_adjustment():
             qty_change = qty_change * -1
 
         c.execute("""
+            UPDATE stock
+            SET qty = qty + %s
+            WHERE id=%s
+            AND company_code=%s
+        """, (
+            qty_change,
+            item_id,
+            session["company_code"]
+        ))    
+
+        c.execute("""
             INSERT INTO stock_adjustments (
                 company_code,
                 adjustment_date,

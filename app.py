@@ -733,6 +733,7 @@ def home():
         menu_html += '<a href="/suppliers"><button>Suppliers</button></a>'
         menu_html += '<a href="/stock-movement"><button>Stock Purchase In / Out</button></a>'
         menu_html += '<a href="/stock-adjustment"><button>Stock Adjustment</button></a>'
+        menu_html += '<a href="/stock-balance"><button>Check Stock Balance</button></a>'
 
     menu_html += '<a href="/support"><button>Report Problem</button></a>'
     
@@ -3382,6 +3383,146 @@ def stock_adjustment():
         <button type="button">Back Dashboard</button>
     </a>
 
+    """
+
+@app.route("/stock-balance")
+def stock_balance():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    search = request.args.get("search", "")
+    supplier_filter = request.args.get("supplier", "")
+    status_filter = request.args.get("status", "")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    query = """
+        SELECT
+            item_code,
+            item_name,
+            supplier,
+            qty,
+            COALESCE(is_active, TRUE)
+        FROM stock
+        WHERE company_code=%s
+    """
+
+    params = [session["company_code"]]
+
+    if search:
+        query += """
+        AND (
+            item_code ILIKE %s
+            OR item_name ILIKE %s
+        )
+        """
+        params.append(f"%{search}%")
+        params.append(f"%{search}%")
+
+    if supplier_filter:
+        query += " AND supplier ILIKE %s"
+        params.append(f"%{supplier_filter}%")
+
+    if status_filter == "ACTIVE":
+        query += " AND COALESCE(is_active, TRUE)=TRUE"
+
+    if status_filter == "INACTIVE":
+        query += " AND COALESCE(is_active, TRUE)=FALSE"
+
+    query += " ORDER BY item_name"
+
+    c.execute(query, tuple(params))
+    items = c.fetchall()
+
+    c.execute("""
+        SELECT DISTINCT supplier
+        FROM stock
+        WHERE company_code=%s
+        AND supplier IS NOT NULL
+        AND supplier <> ''
+        ORDER BY supplier
+    """, (session["company_code"],))
+
+    suppliers = c.fetchall()
+
+    conn.close()
+
+    supplier_options = '<option value="">All Suppliers</option>'
+
+    for s in suppliers:
+        selected = "selected" if s[0] == supplier_filter else ""
+        supplier_options += f"""
+        <option value="{s[0]}" {selected}>{s[0]}</option>
+        """
+
+    active_selected = "selected" if status_filter == "ACTIVE" else ""
+    inactive_selected = "selected" if status_filter == "INACTIVE" else ""
+
+    rows = ""
+
+    for i in items:
+        status_text = "Active" if i[4] else "Inactive"
+
+        low_stock_style = ""
+        if i[3] is not None and i[3] <= 0:
+            low_stock_style = 'style="color:red;font-weight:bold;"'
+
+        rows += f"""
+        <tr>
+            <td>{i[0]}</td>
+            <td>{i[1]}</td>
+            <td>{i[2] or '-'}</td>
+            <td align="center" {low_stock_style}>{i[3] or 0}</td>
+            <td>{status_text}</td>
+        </tr>
+        """
+
+    return f"""
+    <h1>Check Stock Balance</h1>
+
+    <form method="GET">
+
+        Search Item / Code:
+        <input type="text" name="search" value="{search}">
+
+        Supplier:
+        <select name="supplier">
+            {supplier_options}
+        </select>
+
+        Status:
+        <select name="status">
+            <option value="">All</option>
+            <option value="ACTIVE" {active_selected}>Active</option>
+            <option value="INACTIVE" {inactive_selected}>Inactive</option>
+        </select>
+
+        <button type="submit">Search</button>
+
+    </form>
+
+    <br>
+
+    <table border="1" cellpadding="8">
+        <tr>
+            <th>Item Code</th>
+            <th>Item Name</th>
+            <th>Supplier</th>
+            <th>Stock Balance</th>
+            <th>Status</th>
+        </tr>
+
+        {rows}
+
+    </table>
+
+    <br>
+
+    <a href="/">
+        <button>Back Dashboard</button>
+    </a>
     """
 
 @app.route("/stock-item/<int:item_id>", methods=["GET", "POST"])

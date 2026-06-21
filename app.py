@@ -4250,7 +4250,25 @@ def reset_company_data():
     if session.get("role") != "admin":
         return "Access denied"
 
-    company_code = request.args.get("company_code", "")
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT company_code, company_name
+        FROM companies
+        ORDER BY company_name
+    """)
+
+    companies = c.fetchall()
+
+    company_options = ""
+
+    for company in companies:
+        company_options += f"""
+        <option value="{company[0]}">
+            {company[1]} ({company[0]})
+        </option>
+        """
 
     if request.method == "POST":
         company_code = request.form["company_code"]
@@ -4294,8 +4312,8 @@ def reset_company_data():
 
     <form method="POST">
 
-        Company Code:<br>
-        <input type="text" name="company_code" value="{company_code}" required><br><br>
+        Company:<br>
+        <select name="company_code" required>{company_options}</select><br><br>
 
         Type RESET to confirm:<br>
         <input type="text" name="confirm" required><br><br>

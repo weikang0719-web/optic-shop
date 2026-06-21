@@ -739,9 +739,6 @@ def home():
     
     menu_html += '<a href="/logout"><button>Logout</button></a>'
 
-    if session.get("role") == "admin":
-        menu_html += '<a href="/reset-company-data"><button style="color:red;">Reset Company Data</button></a>'
-
     return f"""
     <!DOCTYPE html>
     <html>
@@ -2988,6 +2985,7 @@ def admin_dashboard():
         <li><a href="/register-owner">Create Company</a></li>
         <li><a href="/support-tickets">Support Tickets</a></li>
         <li><a href="/error-logs">Error Logs</a></li>
+        <li><a href="/reset-company-data"><span style="color:red;">Reset Company Data</span></a></li>
         <li><a href="/logout">Logout</a></li>
     </ul>
     """

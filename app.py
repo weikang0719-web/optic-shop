@@ -310,6 +310,17 @@ def init_db():
     WHERE is_active IS NULL
     """)
 
+    c.execute("""
+    ALTER TABLE suppliers
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
+    """)
+
+    c.execute("""
+    UPDATE suppliers
+    SET is_active=TRUE
+    WHERE is_active IS NULL
+    """)
+
     conn.commit()
     conn.close()
 
@@ -3341,7 +3352,11 @@ def suppliers():
     for s in suppliers_list:
         rows += f"""
         <tr>
-            <td>{s[1]}</td>
+            <td>
+                <a href="/supplier-profile/{s[0]}">
+                    {s[1]}
+                </a>
+            </td>
             <td>{s[2]}</td>
             <td>{s[3] or ''}</td>
             <td>{s[4] or ''}</td>
@@ -3388,6 +3403,164 @@ def suppliers():
 
     <br>
     <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/supplier-profile/<int:supplier_id>", methods=["GET", "POST"])
+def supplier_profile(supplier_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+
+        supplier_name = request.form["supplier_name"]
+        supplier_code = request.form["supplier_code"]
+        tel_no = request.form["tel_no"]
+        address = request.form["address"]
+        account_no = request.form["account_no"]
+
+        is_active = request.form.get("is_active") == "Y"
+
+        c.execute("""
+            UPDATE suppliers
+            SET supplier_name=%s,
+                supplier_code=%s,
+                tel_no=%s,
+                address=%s,
+                account_no=%s,
+                is_active=%s
+            WHERE id=%s
+        """, (
+            supplier_name,
+            supplier_code,
+            tel_no,
+            address,
+            account_no,
+            is_active,
+            supplier_id
+        ))
+
+        conn.commit()
+
+    c.execute("""
+        SELECT
+            id,
+            supplier_name,
+            supplier_code,
+            tel_no,
+            address,
+            account_no,
+            COALESCE(is_active, TRUE)
+        FROM suppliers
+        WHERE id=%s
+    """, (supplier_id,))
+
+    supplier = c.fetchone()
+
+    if not supplier:
+        conn.close()
+        return "Supplier not found"
+
+    active_checked = "checked" if supplier[6] else ""
+
+    c.execute("""
+        SELECT
+            movement_date,
+            reference_no,
+            movement_type,
+            qty
+        FROM stock_movements
+        WHERE supplier_id=%s
+        ORDER BY movement_date DESC
+    """, (supplier_id,))
+
+    purchases = c.fetchall()
+
+    rows = ""
+
+    for p in purchases:
+
+        rows += f"""
+        <tr>
+            <td>{p[0]}</td>
+            <td>{p[1] or ''}</td>
+            <td>{p[2]}</td>
+            <td>{p[3]}</td>
+        </tr>
+        """
+
+    conn.close()
+
+    return f"""
+    <h1>Supplier Profile</h1>
+
+    <form method="POST">
+
+        Supplier Name:<br>
+        <input type="text"
+               name="supplier_name"
+               value="{supplier[1] or ''}"
+               required><br><br>
+
+        Supplier Code:<br>
+        <input type="text"
+               name="supplier_code"
+               value="{supplier[2] or ''}"><br><br>
+
+        Tel No:<br>
+        <input type="text"
+               name="tel_no"
+               value="{supplier[3] or ''}"><br><br>
+
+        Address:<br>
+        <textarea name="address">{supplier[4] or ''}</textarea><br><br>
+
+        Account No:<br>
+        <input type="text"
+               name="account_no"
+               value="{supplier[5] or ''}"><br><br>
+
+        <label>
+            <input type="checkbox"
+                   name="is_active"
+                   value="Y"
+                   {active_checked}>
+            Active Supplier
+        </label>
+
+        <br><br>
+
+        <button type="submit">
+            Save Supplier
+        </button>
+
+    </form>
+
+    <hr>
+
+    <h2>Purchase History</h2>
+
+    <table border="1" cellpadding="8">
+
+        <tr>
+            <th>Date</th>
+            <th>Reference No</th>
+            <th>Type</th>
+            <th>Qty</th>
+        </tr>
+
+        {rows}
+
+    </table>
+
+    <br>
+
+    <a href="/suppliers">
+        Back To Supplier List
+    </a>
     """
 
 @app.route("/stock-movement", methods=["GET", "POST"])

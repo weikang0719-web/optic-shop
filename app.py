@@ -2610,12 +2610,12 @@ def companies():
         ORDER BY company_name
     """)
 
-    companies = c.fetchall()
+    companies_list = c.fetchall()
     conn.close()
 
     rows = ""
 
-    for company in companies:
+    for company in companies_list:
         status = "ACTIVE" if company[5] else "SUSPENDED"
         expiry = company[6] or "-"
 

@@ -910,7 +910,15 @@ def sales():
 
         sale_id = c.fetchone()[0]
 
-        receipt_no = f"REC-{sale_id:06d}"
+        c.execute("""
+            SELECT COUNT(*)
+            FROM sales
+            WHERE company_code=%s
+        """, (session["company_code"],))
+
+        receipt_count = c.fetchone()[0]
+
+        receipt_no = f"REC-{receipt_count:06d}"
 
         c.execute("""
             UPDATE sales

@@ -4301,10 +4301,17 @@ def reset_company_data():
 
         return f"""
         <h1>Reset Completed</h1>
-        <p>Company data reset successfully.</p>
+
+        <p>
+        Company <b>{company_code}</b>
+        data reset successfully.
+        </p>
 
         <br>
-        <a href="/admin">Back Super Admin Dashboard</a>
+
+        <a href="/admin">
+        Back Super Admin Dashboard
+        </a>
         """
 
     return f"""

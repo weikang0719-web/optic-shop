@@ -385,6 +385,11 @@ def init_db():
     ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0
     """)
 
+    c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS qty INTEGER DEFAULT 1
+    """)
+
     conn.commit()
     conn.close()
 
@@ -931,6 +936,7 @@ def sales():
         customer = request.form["customer"]
         reference_no = request.form["reference_no"]
         item_id = int(request.form["item_id"])
+        qty = int(request.form["qty"])
         amount = float(request.form["amount"])
         staff = request.form["staff"]
         remarks = request.form["remarks"]
@@ -963,9 +969,10 @@ def sales():
                 amount,
                 staff,
                 company_code,
-                item_id
+                item_id,
+                qty
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             RETURNING id
         """, (
             sale_date,
@@ -976,7 +983,8 @@ def sales():
             amount,
             staff,
             session["company_code"],
-            item_id
+            item_id,
+            qty
         ))
 
         sale_id = c.fetchone()[0]
@@ -992,7 +1000,7 @@ def sales():
 
         c.execute("""
             UPDATE stock
-            SET qty = qty - 1
+            SET quantity = quantity - %s
             WHERE id=%s AND company_code=%s
         """, (item_id, session["company_code"]))
 
@@ -1022,7 +1030,7 @@ def sales():
     for item in stock_items:
         item_options += f"""
         <option value="{item[0]}">
-            {item[1]} - {item[2]} (Balance:{item[3]})
+            {item[2]} (Stock:{item[3]})
         </option>
         """
 
@@ -1047,6 +1055,13 @@ def sales():
         <select name="item_id" required>
             {item_options}
         </select><br><br>
+
+        <label>Qty:</label>
+        <input type="number"
+               name="qty"
+               value="1"
+               min="1"
+               required>
 
         <label>Payment Method:</label><br>
         <select name="payment_method" required>
@@ -1191,6 +1206,7 @@ def receipt(sale_id):
         s.remarks,
         s.payment_method,
         st.item_name,
+        s.qty,
         st.item_code
     FROM sales s
     LEFT JOIN stock st
@@ -1251,7 +1267,7 @@ def receipt(sale_id):
         <p><b>Ref No:</b> {sale[6] or '-'}</p>
         <p><b>Customer:</b> {sale[2]}</p>
         <p><b>Item:</b> {sale[9] or '-'}</p>
-        <p><b>Item Code:</b> {sale[10] or '-'}</p>
+        <p><b>Qty:</b> {sale[10] or 1}</p>
         <p><b>Remark:</b> {sale[7] or '-'}</p>
         <p><b>Staff:</b> {sale[4]}</p>
 

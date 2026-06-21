@@ -4283,8 +4283,10 @@ def reset_company_data():
 
         return f"""
         <h1>Reset Completed</h1>
-        <p>All data for company <b>{company_code}</b> has been cleared.</p>
-        <a href="/">Back Dashboard</a>
+        <p>Company data reset successfully.</p>
+
+        <br>
+        <a href="/admin">Back Super Admin Dashboard</a>
         """
 
     return f"""
@@ -4306,7 +4308,7 @@ def reset_company_data():
     </form>
 
     <br>
-    <a href="/">Back Dashboard</a>
+    <a href="/admin">Back Super Admin Dashboard</a>
     """
 
 @app.route("/logout")

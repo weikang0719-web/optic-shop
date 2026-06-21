@@ -370,6 +370,21 @@ def init_db():
     )
     """)
 
+    c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS item_id INTEGER
+    """)
+
+    c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS cost NUMERIC DEFAULT 0
+    """)
+
+    c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS commission NUMERIC DEFAULT 0
+    """)
+
     conn.commit()
     conn.close()
 
@@ -904,21 +919,39 @@ setInterval(updateDateTime, 1000);
 def sales():
     if not session.get("logged_in"):
         return redirect("/login")
-    
+
     if not has_permission("can_add_sales"):
         return "Access Denied"
+
+    conn = get_conn()
+    c = conn.cursor()
 
     if request.method == "POST":
         sale_date = request.form["sale_date"]
         customer = request.form["customer"]
         reference_no = request.form["reference_no"]
+        item_id = int(request.form["item_id"])
         amount = float(request.form["amount"])
         staff = request.form["staff"]
         remarks = request.form["remarks"]
         payment_method = request.form["payment_method"]
 
-        conn = get_conn()
-        c = conn.cursor()
+        c.execute("""
+            SELECT qty
+            FROM stock
+            WHERE id=%s AND company_code=%s
+        """, (item_id, session["company_code"]))
+
+        stock_row = c.fetchone()
+
+        if not stock_row or stock_row[0] <= 0:
+            conn.close()
+            return """
+            <script>
+                alert('No stock balance');
+                window.location.href='/sales';
+            </script>
+            """
 
         c.execute("""
             INSERT INTO sales (
@@ -929,9 +962,10 @@ def sales():
                 payment_method,
                 amount,
                 staff,
-                company_code
+                company_code,
+                item_id
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             RETURNING id
         """, (
             sale_date,
@@ -941,7 +975,8 @@ def sales():
             payment_method,
             amount,
             staff,
-            session["company_code"]
+            session["company_code"],
+            item_id
         ))
 
         sale_id = c.fetchone()[0]
@@ -953,8 +988,13 @@ def sales():
         """, (session["company_code"],))
 
         receipt_count = c.fetchone()[0]
-
         receipt_no = f"REC-{receipt_count:06d}"
+
+        c.execute("""
+            UPDATE stock
+            SET qty = qty - 1
+            WHERE id=%s AND company_code=%s
+        """, (item_id, session["company_code"]))
 
         c.execute("""
             UPDATE sales
@@ -966,6 +1006,25 @@ def sales():
         conn.close()
 
         return redirect(f"/receipt/{sale_id}")
+
+    c.execute("""
+        SELECT id, item_code, item_name, qty
+        FROM stock
+        WHERE company_code=%s
+        AND qty > 0
+        ORDER BY item_name
+    """, (session["company_code"],))
+
+    stock_items = c.fetchall()
+    conn.close()
+
+    item_options = ""
+    for item in stock_items:
+        item_options += f"""
+        <option value="{item[0]}">
+            {item[1]} - {item[2]} (Balance:{item[3]})
+        </option>
+        """
 
     return f"""
     <h1>Add Sales</h1>
@@ -984,6 +1043,11 @@ def sales():
         <label>Remark:</label><br>
         <textarea name="remarks" rows="3"></textarea><br><br>
 
+        <label>Item:</label><br>
+        <select name="item_id" required>
+            {item_options}
+        </select><br><br>
+
         <label>Payment Method:</label><br>
         <select name="payment_method" required>
             <option value="Cash">Cash</option>
@@ -1001,9 +1065,8 @@ def sales():
 
         <button type="submit">Save</button>
 
-        <button type="button"
-        onclick="window.location.href='/'">
-           Cancel
+        <button type="button" onclick="window.location.href='/'">
+            Cancel
         </button>
 
     </form>

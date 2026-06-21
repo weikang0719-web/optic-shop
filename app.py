@@ -3202,31 +3202,32 @@ def stock_item(item_id):
     c = conn.cursor()
 
     if request.method == "POST":
-
         item_name = request.form["item_name"]
-        cost = float(request.form["cost"] or 0)
-        commission = float(request.form["commission"] or 0)
-        minimum_selling_price = float(request.form["minimum_selling_price"] or 0)
         supplier = request.form["supplier"]
+        selling_price = float(request.form["selling_price"] or 0)
+        minimum_selling_price = float(request.form["minimum_selling_price"] or 0)
+        commission = float(request.form["commission"] or 0)
+        cost = float(request.form["cost"] or 0)
         is_active = request.form.get("is_active") == "Y"
 
         c.execute("""
             UPDATE stock
-            SET
-                item_name=%s,
-                cost=%s,
-                commission=%s,
-                minimum_selling_price=%s,
+            SET item_name=%s,
                 supplier=%s,
+                selling_price=%s,
+                minimum_selling_price=%s,
+                commission=%s,
+                cost=%s,
                 is_active=%s
             WHERE id=%s
-              AND company_code=%s
+            AND company_code=%s
         """, (
             item_name,
-            cost,
-            commission,
-            minimum_selling_price,
             supplier,
+            selling_price,
+            minimum_selling_price,
+            commission,
+            cost,
             is_active,
             item_id,
             session["company_code"]
@@ -3235,26 +3236,15 @@ def stock_item(item_id):
         conn.commit()
 
     c.execute("""
-        SELECT
-            id,
-            item_code,
-            item_name,
-            cost,
-            commission,
-            minimum_selling_price,
-            supplier,
-            qty,
-            COALESCE(is_active, TRUE)
+        SELECT id, item_code, item_name, supplier,
+               selling_price, minimum_selling_price,
+               commission, cost, COALESCE(is_active, TRUE)
         FROM stock
         WHERE id=%s
-          AND company_code=%s
-    """, (
-        item_id,
-        session["company_code"]
-    ))
+        AND company_code=%s
+    """, (item_id, session["company_code"]))
 
     item = c.fetchone()
-
     conn.close()
 
     if not item:
@@ -3263,70 +3253,41 @@ def stock_item(item_id):
     active_checked = "checked" if item[8] else ""
 
     return f"""
-    <h1>Stock Item Master</h1>
+    <h1>Stock Item Profile</h1>
 
     <form method="POST">
 
-        Item Code<br>
-        <input type="text"
-               value="{item[1]}"
-               readonly><br><br>
+        Item Code:<br>
+        <input type="text" value="{item[1]}" readonly><br><br>
 
-        Item Name<br>
-        <input type="text"
-               name="item_name"
-               value="{item[2]}"
-               required><br><br>
+        Item Name:<br>
+        <input type="text" name="item_name" value="{item[2] or ''}" required><br><br>
 
-        Cost<br>
-        <input type="number"
-               step="0.01"
-               name="cost"
-               value="{item[3]}"><br><br>
+        Supplier:<br>
+        <input type="text" name="supplier" value="{item[3] or ''}"><br><br>
 
-        Commission<br>
-        <input type="number"
-               step="0.01"
-               name="commission"
-               value="{item[4]}"><br><br>
+        Selling Price:<br>
+        <input type="number" step="0.01" name="selling_price" value="{item[4] or 0}"><br><br>
 
-        Minimum Selling Price<br>
-        <input type="number"
-               step="0.01"
-               name="minimum_selling_price"
-               value="{item[5]}"><br><br>
+        Minimum Selling Price:<br>
+        <input type="number" step="0.01" name="minimum_selling_price" value="{item[5] or 0}"><br><br>
 
-        Supplier<br>
-        <input type="text"
-               name="supplier"
-               value="{item[6]}"><br><br>
+        Commission:<br>
+        <input type="number" step="0.01" name="commission" value="{item[6] or 0}"><br><br>
 
-        Current Stock Balance<br>
-        <input type="text"
-               value="{item[7]}"
-               readonly><br><br>
+        Cost:<br>
+        <input type="number" step="0.01" name="cost" value="{item[7] or 0}"><br><br>
 
         <label>
-            <input type="checkbox"
-                   name="is_active"
-                   value="Y"
-                   {active_checked}>
-            Active Item
-        </label>
+            <input type="checkbox" name="is_active" value="Y" {active_checked}>
+            Active
+        </label><br><br>
 
-        <br><br>
-
-        <button type="submit">
-            Save Item
-        </button>
-
+        <button type="submit">Save Item</button>
     </form>
 
     <br>
-
-    <a href="/stock">
-        Back To Stock Item
-    </a>
+    <a href="/stock">Back to Stock Item</a>
     """
 
 @app.route("/suppliers", methods=["GET", "POST"])

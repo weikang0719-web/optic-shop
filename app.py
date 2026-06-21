@@ -1180,9 +1180,23 @@ def receipt(sale_id):
     company = c.fetchone()
 
     c.execute("""
-        SELECT id, date, customer, amount, staff, receipt_no, reference_no, remarks, payment_method
-        FROM sales
-        WHERE id=%s AND company_code=%s
+    SELECT
+        s.id,
+        s.date,
+        s.customer,
+        s.amount,
+        s.staff,
+        s.receipt_no,
+        s.reference_no,
+        s.remarks,
+        s.payment_method,
+        st.item_name,
+        st.item_code
+    FROM sales s
+    LEFT JOIN stock st
+        ON s.item_id = st.id
+    WHERE s.id=%s
+    AND s.company_code=%s
     """, (sale_id, session["company_code"]))
     sale = c.fetchone()
 
@@ -1236,6 +1250,8 @@ def receipt(sale_id):
         <p><b>Date:</b> {str(sale[1])[:10]}</p>
         <p><b>Ref No:</b> {sale[6] or '-'}</p>
         <p><b>Customer:</b> {sale[2]}</p>
+        <p><b>Item:</b> {sale[9] or '-'}</p>
+        <p><b>Item Code:</b> {sale[10] or '-'}</p>
         <p><b>Remark:</b> {sale[7] or '-'}</p>
         <p><b>Staff:</b> {sale[4]}</p>
 

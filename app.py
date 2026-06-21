@@ -3253,8 +3253,8 @@ def stock_adjustment():
         adjustment_type = request.form["adjustment_type"]
         reason = request.form["reason"]
 
-    if adjustment_type == "DECREASE":
-        qty_change = qty_change * -1
+        if adjustment_type == "DECREASE":
+            qty_change = qty_change * -1
 
         c.execute("""
             INSERT INTO stock_adjustments (

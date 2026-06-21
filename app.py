@@ -3208,6 +3208,24 @@ def admin_dashboard():
     </ul>
     """
 
+@app.route("/error-logs")
+def error_logs():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    if session.get("role") != "admin":
+        return "Access Denied"
+
+    return """
+    <h1>Error Logs</h1>
+
+    <p>No error logs available.</p>
+
+    <br>
+    <a href="/admin">Back to Dashboard</a>
+    """
+
 @app.route("/support", methods=["GET", "POST"])
 def support():
 

@@ -743,7 +743,6 @@ def home():
 
     if session.get("role") in ["admin", "owner"]:
         menu_html += '<a href="/permissions"><button>Permissions</button></a>'
-        menu_html += '<a href="/companies"><button>Companies</button></a>'
         menu_html += '<a href="/company-profile"><button>Company Profile</button></a>'
         menu_html += '<a href="/stock"><button>Stock</button></a>'
         menu_html += '<a href="/suppliers"><button>Suppliers</button></a>'
@@ -3085,6 +3084,7 @@ def admin_dashboard():
 
     <ul>
         <li><a href="/register-owner">Create Company</a></li>
+        <li><a href="/companies">Companies</a></li>
         <li><a href="/support-tickets">Support Tickets</a></li>
         <li><a href="/error-logs">Error Logs</a></li>
         <li><a href="/reset-company-data"><span style="color:red;">Reset Company Data</span></a></li>

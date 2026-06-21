@@ -3768,11 +3768,33 @@ def suppliers():
     c = conn.cursor()
 
     if request.method == "POST":
-        supplier_code = request.form["supplier_code"]
-        supplier_name = request.form["supplier_name"]
-        phone = request.form["phone"]
-        address = request.form["address"]
-        account_no = request.form["account_no"]
+
+        supplier_code = request.form["supplier_code"].strip()
+        supplier_name = request.form["supplier_name"].strip()
+        phone = request.form["phone"].strip()
+        address = request.form["address"].strip()
+        account_no = request.form["account_no"].strip()
+
+        c.execute("""
+            SELECT id
+            FROM suppliers
+            WHERE company_code=%s
+            AND LOWER(supplier_name)=LOWER(%s)
+        """, (
+            session["company_code"],
+            supplier_name
+        ))
+
+        existing_supplier = c.fetchone()
+
+        if existing_supplier:
+            conn.close()
+            return """
+            <script>
+                alert('Supplier already exists!');
+                window.location.href='/suppliers';
+            </script>
+            """
 
         c.execute("""
             INSERT INTO suppliers (
@@ -3783,7 +3805,7 @@ def suppliers():
                 address,
                 account_no
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s,%s,%s,%s,%s,%s)
         """, (
             session["company_code"],
             supplier_code,
@@ -3794,6 +3816,9 @@ def suppliers():
         ))
 
         conn.commit()
+        conn.close()
+
+        return redirect("/suppliers")
 
     c.execute("""
         SELECT id, supplier_code, supplier_name, phone, address, account_no
@@ -3806,6 +3831,7 @@ def suppliers():
     conn.close()
 
     rows = ""
+
     for s in suppliers_list:
         rows += f"""
         <tr>
@@ -3835,7 +3861,7 @@ def suppliers():
         <input type="text" name="phone"><br><br>
 
         Address:<br>
-        <textarea name="address" rows="3" cols="50"></textarea><br><br>
+        <textarea name="address"></textarea><br><br>
 
         Account No:<br>
         <input type="text" name="account_no"><br><br>
@@ -3855,7 +3881,9 @@ def suppliers():
             <th>Address</th>
             <th>Account No</th>
         </tr>
+
         {rows}
+
     </table>
 
     <br>

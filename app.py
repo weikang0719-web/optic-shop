@@ -295,6 +295,22 @@ def init_db():
     """)
 
     c.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE'
+    """)
+
+    c.execute("""
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS expiry_date DATE
+    """)
+
+    c.execute("""
+    UPDATE companies
+    SET status='ACTIVE'
+    WHERE status IS NULL
+    """)
+
+    c.execute("""
     ALTER TABLE stock
     ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
     """)
@@ -2589,7 +2605,7 @@ def companies():
     c = conn.cursor()
 
     c.execute("""
-        SELECT id, company_code, company_name, address, phone, is_active
+        SELECT id, company_code, company_name, address, phone, is_active, expiry_date
         FROM companies
         ORDER BY company_name
     """)
@@ -2599,17 +2615,29 @@ def companies():
 
     rows = ""
 
-    for co in companies:
-        status = "Active" if co[5] else "Disabled"
+    for company in companies:
+        status = "ACTIVE" if company[5] else "SUSPENDED"
+        expiry = company[6] or "-"
+
+        action_text = "Suspend" if company[5] else "Activate"
 
         rows += f"""
+
         <tr>
-            <td>{co[0]}</td>
-            <td>{co[1]}</td>
-            <td>{co[2]}</td>
-            <td>{co[3]}</td>
-            <td>{co[4]}</td>
+            <td>{company[0]}</td>
+            <td>{company[1]}</td>
+            <td>{company[2]}</td>
+            <td>{company[3] or ''}</td>
+            <td>{company[4] or ''}</td>
             <td>{status}</td>
+            <td>{expiry}</td>
+            <td>
+                <a href="/toggle-company/{company[0]}">{action_text}</a>
+                |
+                <a href="/edit-company-expiry/{company[0]}">Expiry</a>
+                |
+                <a href="/reset-company-data?company_code={company[1]}">Reset</a>
+            </td>
         </tr>
         """
 
@@ -2630,6 +2658,8 @@ def companies():
             <th>Address</th>
             <th>Phone</th>
             <th>Status</th>
+            <th>Expiry Date</th>
+            <th>Actions</th>
         </tr>
 
         {rows}
@@ -2637,6 +2667,85 @@ def companies():
 
     <br>
     <a href="/">Back Dashboard</a>
+    """
+
+rows = ""
+
+for company in companies:
+    status = "ACTIVE" if company[5] else "SUSPENDED"
+    expiry = company[6] or "-"
+
+    action_text = "Suspend" if company[5] else "Activate"
+
+    rows += f"""
+    <tr>
+        <td>{company[0]}</td>
+        <td>{company[1]}</td>
+        <td>{company[2]}</td>
+        <td>{company[3] or ''}</td>
+        <td>{company[4] or ''}</td>
+        <td>{status}</td>
+        <td>{expiry}</td>
+        <td>
+            <a href="/toggle-company/{company[0]}">{action_text}</a>
+            |
+            <a href="/edit-company-expiry/{company[0]}">Expiry</a>
+            |
+            <a href="/reset-company-data?company_code={company[1]}">Reset</a>
+        </td>
+    </tr>
+    """
+
+@app.route("/edit-company-expiry/<int:company_id>", methods=["GET", "POST"])
+def edit_company_expiry(company_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    if session.get("role") != "admin":
+        return "Access denied"
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+        expiry_date = request.form["expiry_date"] or None
+
+        c.execute("""
+            UPDATE companies
+            SET expiry_date=%s
+            WHERE id=%s
+        """, (expiry_date, company_id))
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/companies")
+
+    c.execute("""
+        SELECT company_name, expiry_date
+        FROM companies
+        WHERE id=%s
+    """, (company_id,))
+
+    company = c.fetchone()
+    conn.close()
+
+    return f"""
+    <h1>Edit Company Expiry</h1>
+
+    <form method="POST">
+        Company:<br>
+        <b>{company[0]}</b><br><br>
+
+        Expiry Date:<br>
+        <input type="date" name="expiry_date" value="{company[1] or ''}"><br><br>
+
+        <button type="submit">Save Expiry</button>
+    </form>
+
+    <br>
+    <a href="/companies">Back Companies</a>
     """
 
 @app.route("/add-company", methods=["GET", "POST"])

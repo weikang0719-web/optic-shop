@@ -663,6 +663,9 @@ def has_permission(permission):
 def home():
     if not session.get("logged_in"):
         return redirect("/login")
+    
+    if session.get("role") == "admin":
+        return redirect("/admin")
 
     conn = get_conn()
     c = conn.cursor()

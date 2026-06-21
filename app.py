@@ -3363,6 +3363,13 @@ def stock_adjustment():
         {rows}
 
     </table>
+
+    <br><br>
+
+    <a href="/">
+        <button type="button">Back Dashboard</button>
+    </a>
+    
     """
 
 @app.route("/stock-item/<int:item_id>", methods=["GET", "POST"])

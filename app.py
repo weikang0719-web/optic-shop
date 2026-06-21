@@ -4097,7 +4097,7 @@ def stock_movement():
                 note,
                 status
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
             session["company_code"],
             movement_date,

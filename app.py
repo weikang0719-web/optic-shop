@@ -321,6 +321,26 @@ def init_db():
     WHERE is_active IS NULL
     """)
 
+    c.execute("""
+    ALTER TABLE suppliers
+    ADD COLUMN IF NOT EXISTS tel_no TEXT
+    """)
+
+    c.execute("""
+    ALTER TABLE suppliers
+    ADD COLUMN IF NOT EXISTS address TEXT
+    """)
+
+    c.execute("""
+    ALTER TABLE suppliers
+    ADD COLUMN IF NOT EXISTS account_no TEXT
+    """)
+
+    c.execute("""
+    ALTER TABLE suppliers
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
+    """)
+
     conn.commit()
     conn.close()
 

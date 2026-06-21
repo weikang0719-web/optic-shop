@@ -3258,7 +3258,7 @@ def stock():
                 supplier,
                 qty
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
             session["company_code"],
             item_code,

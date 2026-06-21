@@ -728,6 +728,15 @@ def home():
     if profit < 0:
         profit_color = "red"
 
+    c.execute("""
+        SELECT expiry_date
+        FROM companies
+        WHERE company_code=%s
+    """, (session["company_code"],))
+
+    company_row = c.fetchone()
+    expiry_date = company_row[0] if company_row else None
+    
     conn.close()
 
     menu_html = ""
@@ -756,15 +765,6 @@ def home():
     menu_html += '<a href="/support"><button>Report Problem</button></a>'
     
     menu_html += '<a href="/logout"><button>Logout</button></a>'
-
-    c.execute("""
-        SELECT expiry_date
-        FROM companies
-        WHERE company_code=%s
-    """, (session["company_code"],))
-
-    company_row = c.fetchone()
-    expiry_date = company_row[0] if company_row else None
 
     return f"""
     <!DOCTYPE html>

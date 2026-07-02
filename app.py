@@ -280,6 +280,36 @@ def init_db():
     """)
 
     c.execute("""
+    CREATE TABLE IF NOT EXISTS customers(
+        id SERIAL PRIMARY KEY,
+
+        company_code TEXT NOT NULL,
+
+        customer_code TEXT,
+
+        customer_name TEXT NOT NULL,
+
+        phone TEXT,
+
+        ic_passport TEXT,
+
+        birthday DATE,
+
+        gender TEXT,
+
+        address TEXT,
+
+        email TEXT,
+
+        remark TEXT,
+
+        is_active BOOLEAN DEFAULT TRUE,
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    c.execute("""
     ALTER TABLE stock_movements
     ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE'
     """)
@@ -388,6 +418,11 @@ def init_db():
     c.execute("""
     ALTER TABLE sales
     ADD COLUMN IF NOT EXISTS qty INTEGER DEFAULT 1
+    """)
+
+    c.execute("""
+    ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS customer_id INTEGER
     """)
 
     conn.commit()
@@ -781,6 +816,7 @@ def home():
         menu_html += '<a href="/stock-movement"><button>Stock Purchase In / Out</button></a>'
         menu_html += '<a href="/stock-adjustment"><button>Stock Adjustment</button></a>'
         menu_html += '<a href="/stock-balance"><button>Check Stock Balance</button></a>'
+        menu_html += '<a href="/customers"><button>Customer</button></a>'
 
     menu_html += '<a href="/support"><button>Report Problem</button></a>'
     
@@ -933,7 +969,20 @@ def sales():
 
     if request.method == "POST":
         sale_date = request.form["sale_date"]
-        customer = request.form["customer"]
+        customer_id = int(request.form["customer_id"])
+
+        c.execute("""
+            SELECT customer_name
+            FROM customers
+            WHERE id=%s
+            AND company_code=%s
+        """, (
+            customer_id,
+            session["company_code"]
+        ))
+
+        customer = c.fetchone()[0]
+
         reference_no = request.form["reference_no"]
         item_id = int(request.form["item_id"])
         qty = int(request.form["qty"])
@@ -1024,6 +1073,26 @@ def sales():
     """, (session["company_code"],))
 
     stock_items = c.fetchall()
+
+    c.execute("""
+        SELECT id, customer_code, customer_name, phone
+        FROM customers
+        WHERE company_code=%s
+        AND COALESCE(is_active, TRUE)=TRUE
+        ORDER BY customer_name
+    """, (session["company_code"],))
+
+    customers_list = c.fetchall()
+
+    customer_options = ""
+
+    for cust in customers_list:
+        customer_options += f"""
+        <option value="{cust[0]}">
+            {cust[1]} - {cust[2]} ({cust[3] or ''})
+        </option>
+        """
+
     conn.close()
 
     item_options = ""
@@ -1043,7 +1112,9 @@ def sales():
         <input type="date" name="sale_date" value="{datetime.now().strftime('%Y-%m-%d')}" required><br><br>
 
         <label>Customer:</label><br>
-        <input type="text" name="customer" required><br><br>
+        <select name="customer_id" required>
+            {customer_options}
+        </select><br><br>
 
         <label>Reference No:</label><br>
         <input type="text" name="reference_no"><br><br>
@@ -4158,6 +4229,285 @@ def supplier_profile(supplier_id):
 
     <a href="/suppliers">
         Back To Supplier List
+    </a>
+    """
+
+@app.route("/customers", methods=["GET", "POST"])
+def customers():
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+
+        customer_name = request.form["customer_name"].strip()
+        phone = request.form["phone"].strip()
+        ic_passport = request.form["ic_passport"].strip()
+        birthday = request.form["birthday"]
+        gender = request.form["gender"]
+        address = request.form["address"].strip()
+        email = request.form["email"].strip()
+        remark = request.form["remark"].strip()
+
+        c.execute("""
+            SELECT COUNT(*)
+            FROM customers
+            WHERE company_code=%s
+        """, (session["company_code"],))
+
+        customer_count = c.fetchone()[0] + 1
+
+        customer_code = f"C{customer_count:06d}"
+
+        c.execute("""
+            INSERT INTO customers(
+                company_code,
+                customer_code,
+                customer_name,
+                phone,
+                ic_passport,
+                birthday,
+                gender,
+                address,
+                email,
+                remark
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            session["company_code"],
+            customer_code,
+            customer_name,
+            phone,
+            ic_passport,
+            birthday if birthday else None,
+            gender,
+            address,
+            email,
+            remark
+        ))
+
+        conn.commit()
+
+    c.execute("""
+        SELECT
+            id,
+            customer_code,
+            customer_name,
+            phone
+        FROM customers
+        WHERE company_code=%s
+        ORDER BY customer_name
+    """, (session["company_code"],))
+
+    customers = c.fetchall()
+
+    rows = ""
+
+    for customer in customers:
+        rows += f"""
+        <tr>
+            <td>{customer[1]}</td>
+
+            <td>
+                <a href="/customer-profile/{customer[0]}">
+                    {customer[2]}
+                </a>
+            </td>
+
+            <td>{customer[3] or ''}</td>
+        </tr>
+        """
+
+    conn.close()
+
+    return f"""
+    <h1>Customer Management</h1>
+
+    <form method="POST">
+
+        <label>Customer Name</label><br>
+        <input type="text" name="customer_name" required><br><br>
+
+        <label>Phone</label><br>
+        <input type="text" name="phone"><br><br>
+
+        <label>IC / Passport</label><br>
+        <input type="text" name="ic_passport"><br><br>
+
+        <label>Birthday</label><br>
+        <input type="date" name="birthday"><br><br>
+
+        <label>Gender</label><br>
+
+        <select name="gender">
+            <option value="">Select</option>
+            <option>Male</option>
+            <option>Female</option>
+        </select>
+
+        <br><br>
+
+        <label>Address</label><br>
+        <textarea name="address"></textarea><br><br>
+
+        <label>Email</label><br>
+        <input type="email" name="email"><br><br>
+
+        <label>Remark</label><br>
+        <textarea name="remark"></textarea><br><br>
+
+        <button type="submit">Save Customer</button>
+
+    </form>
+
+    <hr>
+
+    <h2>Customer List</h2>
+
+    <table border="1" cellpadding="8">
+
+        <tr>
+            <th>Customer Code</th>
+            <th>Name</th>
+            <th>Phone</th>
+        </tr>
+
+        {rows}
+
+    </table>
+
+    <br>
+
+    <a href="/">Back Dashboard</a>
+    """
+
+@app.route("/customer-profile/<int:customer_id>")
+def customer_profile(customer_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT
+            customer_code,
+            customer_name,
+            phone,
+            ic_passport,
+            birthday,
+            gender,
+            address,
+            email,
+            remark
+        FROM customers
+        WHERE id=%s
+        AND company_code=%s
+    """, (
+        customer_id,
+        session["company_code"]
+    ))
+
+    customer = c.fetchone()
+
+    if not customer:
+        conn.close()
+        return "Customer not found"
+
+    c.execute("""
+        SELECT
+            receipt_no,
+            date,
+            amount
+        FROM sales
+        WHERE customer=%s
+        AND company_code=%s
+        ORDER BY date DESC
+    """, (
+        customer[1],
+        session["company_code"]
+    ))
+
+    sales_history = c.fetchall()
+
+    sales_rows = ""
+
+    for sale in sales_history:
+        sales_rows += f"""
+        <tr>
+            <td>{sale[0] or ''}</td>
+            <td>{str(sale[1])[:10]}</td>
+            <td>RM {float(sale[2]):.2f}</td>
+        </tr>
+        """
+
+    conn.close()
+
+    return f"""
+    <h1>Customer Profile</h1>
+
+    <h2>{customer[1]}</h2>
+
+    <table border="1" cellpadding="8">
+
+        <tr><td><b>Customer Code</b></td><td>{customer[0]}</td></tr>
+
+        <tr><td><b>Phone</b></td><td>{customer[2] or ''}</td></tr>
+
+        <tr><td><b>IC / Passport</b></td><td>{customer[3] or ''}</td></tr>
+
+        <tr><td><b>Birthday</b></td><td>{customer[4] or ''}</td></tr>
+
+        <tr><td><b>Gender</b></td><td>{customer[5] or ''}</td></tr>
+
+        <tr><td><b>Address</b></td><td>{customer[6] or ''}</td></tr>
+
+        <tr><td><b>Email</b></td><td>{customer[7] or ''}</td></tr>
+
+        <tr><td><b>Remark</b></td><td>{customer[8] or ''}</td></tr>
+
+    </table>
+
+    <br>
+
+    <h2>Purchase History</h2>
+
+    <table border="1" cellpadding="8">
+
+        <tr>
+            <th>Receipt No</th>
+            <th>Date</th>
+            <th>Amount</th>
+        </tr>
+
+        {sales_rows}
+
+    </table>
+
+    <br><br>
+
+    <h2>Prescription History</h2>
+
+    <p>No prescription records.</p>
+
+    <br>
+
+    <h2>Deposit History</h2>
+
+    <p>No deposit records.</p>
+
+    <br>
+
+    <a href="/customers">
+        <button>Back Customer List</button>
+    </a>
+
+    <a href="/">
+        <button>Dashboard</button>
     </a>
     """
 

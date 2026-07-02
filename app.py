@@ -298,6 +298,30 @@ def init_db():
     """)
 
     c.execute("""
+    CREATE TABLE IF NOT EXISTS deposits (
+        id SERIAL PRIMARY KEY,
+        company_code TEXT NOT NULL,
+        customer_id INTEGER NOT NULL,
+
+        deposit_no TEXT,
+        deposit_date DATE DEFAULT CURRENT_DATE,
+
+        item_description TEXT,
+        total_amount NUMERIC DEFAULT 0,
+        deposit_amount NUMERIC DEFAULT 0,
+        balance_amount NUMERIC DEFAULT 0,
+
+        payment_method TEXT,
+        reference_no TEXT,
+        remark TEXT,
+
+        status TEXT DEFAULT 'OUTSTANDING',
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    c.execute("""
     ALTER TABLE stock_movements
     ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ACTIVE'
     """)
@@ -4557,6 +4581,39 @@ def customer_profile(customer_id):
         </tr>
         """
 
+    c.execute("""
+    SELECT
+        id,
+        deposit_no,
+        deposit_date,
+        total_amount,
+        deposit_amount,
+        balance_amount,
+        status
+    FROM deposits
+    WHERE customer_id=%s
+    AND company_code=%s
+    AND status='OUTSTANDING'
+    ORDER BY deposit_date DESC
+    """,(customer_id,session["company_code"]))
+
+    deposits = c.fetchall()
+
+    deposit_rows = ""
+
+    for d in deposits:
+        deposit_rows += f"""
+    <tr>
+        <td>{d[1]}</td>
+        <td>{d[2]}</td>
+        <td>RM {float(d[3]):.2f}</td>
+        <td>RM {float(d[4]):.2f}</td>
+        <td>RM {float(d[5]):.2f}</td>
+        <td>{d[6]}</td>
+        <td><a href="/deposit/{d[0]}">View</a></td>
+    </tr>
+    """
+
     conn.close()
 
     return f"""
@@ -4625,9 +4682,28 @@ def customer_profile(customer_id):
 
     <br>
 
-    <h2>Deposit History</h2>
+    <h2>Outstanding Deposits</h2>
 
-    <p>No deposit records.</p>
+    <a href="/add-deposit/{customer_id}">
+        <button>Add Deposit</button>
+    </a>
+
+    <br><br>
+
+    <table border="1" cellpadding="8">
+    <tr>
+        <th>Deposit No</th>
+        <th>Date</th>
+        <th>Total</th>
+        <th>Deposit</th>
+        <th>Balance</th>
+        <th>Status</th>
+        <th>Action</th>
+    </tr>
+
+    {deposit_rows}
+
+    </table>
 
     <br>
 
@@ -4642,6 +4718,201 @@ def customer_profile(customer_id):
     <a href="/edit-customer/{customer_id}">
         <button>Edit Customer</button>
     </a>
+    """
+
+@app.route("/deposit/<int:deposit_id>")
+def deposit_detail(deposit_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+    SELECT
+        d.customer_id,
+        d.deposit_no,
+        d.deposit_date,
+        c.customer_name,
+        d.item_description,
+        d.total_amount,
+        d.deposit_amount,
+        d.balance_amount,
+        d.payment_method,
+        d.reference_no,
+        d.remark,
+        d.status
+    FROM deposits d
+    JOIN customers c
+        ON d.customer_id = c.id
+    WHERE d.id=%s
+    AND d.company_code=%s
+    """, (deposit_id, session["company_code"]))
+
+    deposit = c.fetchone()
+
+    conn.close()
+
+    if not deposit:
+        return "Deposit not found"
+
+    return f"""
+    <h1>Deposit Receipt</h1>
+
+    <table border="1" cellpadding="8">
+
+    <tr><td><b>Deposit No</b></td><td>{deposit[1]}</td></tr>
+
+    <tr><td><b>Date</b></td><td>{deposit[2]}</td></tr>
+
+    <tr><td><b>Customer</b></td><td>{deposit[3]}</td></tr>
+
+    <tr><td><b>Item</b></td><td>{deposit[4]}</td></tr>
+
+    <tr><td><b>Total</b></td><td>RM {float(deposit[5]):.2f}</td></tr>
+
+    <tr><td><b>Deposit</b></td><td>RM {float(deposit[6]):.2f}</td></tr>
+
+    <tr><td><b>Balance</b></td><td>RM {float(deposit[7]):.2f}</td></tr>
+
+    <tr><td><b>Payment Method</b></td><td>{deposit[8]}</td></tr>
+
+    <tr><td><b>Reference No</b></td><td>{deposit[9] or ""}</td></tr>
+
+    <tr><td><b>Remark</b></td><td>{deposit[10] or ""}</td></tr>
+
+    <tr><td><b>Status</b></td><td>{deposit[11]}</td></tr>
+
+    </table>
+
+    <br>
+
+    <button onclick="window.print()">Print Deposit Receipt</button>
+
+    <a href="/customer-profile/{deposit_id[0]}">
+        <button>Back</button>
+    </a>
+    """
+
+@app.route("/add-deposit/<int:customer_id>", methods=["GET", "POST"])
+def add_deposit(customer_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT customer_name
+        FROM customers
+        WHERE id=%s AND company_code=%s
+    """, (customer_id, session["company_code"]))
+
+    customer = c.fetchone()
+
+    if not customer:
+        conn.close()
+        return "Customer not found"
+
+    if request.method == "POST":
+        deposit_date = request.form["deposit_date"]
+        item_description = request.form["item_description"]
+        total_amount = float(request.form["total_amount"] or 0)
+        deposit_amount = float(request.form["deposit_amount"] or 0)
+        payment_method = request.form["payment_method"]
+        reference_no = request.form["reference_no"]
+        remark = request.form["remark"]
+
+        balance_amount = total_amount - deposit_amount
+
+        c.execute("""
+            SELECT COUNT(*)
+            FROM deposits
+            WHERE company_code=%s
+        """, (session["company_code"],))
+
+        deposit_count = c.fetchone()[0] + 1
+        deposit_no = f"DEP-{deposit_count:06d}"
+
+        c.execute("""
+            INSERT INTO deposits (
+                company_code,
+                customer_id,
+                deposit_no,
+                deposit_date,
+                item_description,
+                total_amount,
+                deposit_amount,
+                balance_amount,
+                payment_method,
+                reference_no,
+                remark,
+                status
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'OUTSTANDING')
+        """, (
+            session["company_code"],
+            customer_id,
+            deposit_no,
+            deposit_date,
+            item_description,
+            total_amount,
+            deposit_amount,
+            balance_amount,
+            payment_method,
+            reference_no,
+            remark
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return redirect(f"/customer-profile/{customer_id}")
+
+    conn.close()
+
+    return f"""
+    <h1>Add Deposit</h1>
+    <h2>{customer[0]}</h2>
+
+    <form method="POST">
+
+        Date:<br>
+        <input type="date" name="deposit_date" value="{datetime.now().strftime('%Y-%m-%d')}" required><br><br>
+
+        Item / Description:<br>
+        <textarea name="item_description" required></textarea><br><br>
+
+        Total Amount:<br>
+        <input type="number" step="0.01" name="total_amount" required><br><br>
+
+        Deposit Amount:<br>
+        <input type="number" step="0.01" name="deposit_amount" required><br><br>
+
+        Payment Method:<br>
+        <select name="payment_method">
+            <option value="Cash">Cash</option>
+            <option value="Debit Card">Debit Card</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="DuitNow">DuitNow</option>
+            <option value="Atome">Atome</option>
+        </select><br><br>
+
+        Reference No:<br>
+        <input type="text" name="reference_no"><br><br>
+
+        Remark:<br>
+        <textarea name="remark"></textarea><br><br>
+
+        <button type="submit">Save Deposit</button>
+
+        <a href="/customer-profile/{customer_id}">
+            <button type="button">Cancel</button>
+        </a>
+
+    </form>
     """
 
 @app.route("/add-prescription/<int:customer_id>", methods=["GET", "POST"])

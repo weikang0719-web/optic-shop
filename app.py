@@ -282,29 +282,17 @@ def init_db():
     c.execute("""
     CREATE TABLE IF NOT EXISTS customers(
         id SERIAL PRIMARY KEY,
-
         company_code TEXT NOT NULL,
-
         customer_code TEXT,
-
         customer_name TEXT NOT NULL,
-
         phone TEXT,
-
         ic_passport TEXT,
-
         birthday DATE,
-
         gender TEXT,
-
         address TEXT,
-
         email TEXT,
-
         remark TEXT,
-
         is_active BOOLEAN DEFAULT TRUE,
-
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
@@ -4252,6 +4240,25 @@ def customers():
         email = request.form["email"].strip()
         remark = request.form["remark"].strip()
 
+        if ic_passport:
+            c.execute("""
+                SELECT id, customer_code, customer_name
+                FROM customers
+                WHERE company_code=%s
+                AND ic_passport=%s
+            """, (session["company_code"], ic_passport))
+
+            existing_customer = c.fetchone()
+
+            if existing_customer:
+                conn.close()
+                return f"""
+                <script>
+                    alert('Already have this customer: {existing_customer[2]} ({existing_customer[1]})');
+                    window.location.href='/customer-profile/{existing_customer[0]}';
+                </script>
+                """
+        
         c.execute("""
             SELECT COUNT(*)
             FROM customers

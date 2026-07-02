@@ -413,6 +413,79 @@ def init_db():
     ADD COLUMN IF NOT EXISTS customer_id INTEGER
     """)
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS prescriptions (
+        id SERIAL PRIMARY KEY,
+        company_code TEXT NOT NULL,
+        customer_id INTEGER NOT NULL,
+
+        rx_ref TEXT,
+        prescription_date DATE DEFAULT CURRENT_DATE,
+        prescription_type TEXT,
+
+        r_dist_sph TEXT,
+        r_dist_cyl TEXT,
+        r_dist_axis TEXT,
+        r_dist_va TEXT,
+        r_dist_prism TEXT,
+        r_dist_add TEXT,
+
+        r_read_sph TEXT,
+        r_read_cyl TEXT,
+        r_read_axis TEXT,
+        r_read_va TEXT,
+        r_read_prism TEXT,
+        r_read_add TEXT,
+
+        r_former_sph TEXT,
+        r_former_cyl TEXT,
+        r_former_axis TEXT,
+        r_former_va TEXT,
+        r_former_prism TEXT,
+        r_former_add TEXT,
+
+        r_pd_dist TEXT,
+        r_near_dist TEXT,
+        r_p_height TEXT,
+        r_seg_height TEXT,
+
+        l_dist_sph TEXT,
+        l_dist_cyl TEXT,
+        l_dist_axis TEXT,
+        l_dist_va TEXT,
+        l_dist_prism TEXT,
+        l_dist_add TEXT,
+
+        l_read_sph TEXT,
+        l_read_cyl TEXT,
+        l_read_axis TEXT,
+        l_read_va TEXT,
+        l_read_prism TEXT,
+        l_read_add TEXT,
+
+        l_former_sph TEXT,
+        l_former_cyl TEXT,
+        l_former_axis TEXT,
+        l_former_va TEXT,
+        l_former_prism TEXT,
+        l_former_add TEXT,
+
+        l_pd_dist TEXT,
+        l_near_dist TEXT,
+        l_p_height TEXT,
+        l_seg_height TEXT,
+
+        lens_type TEXT,
+        fr_sg TEXT,
+        memo TEXT,
+        l_cor TEXT,
+        model TEXT,
+        deposit NUMERIC DEFAULT 0,
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -4441,6 +4514,38 @@ def customer_profile(customer_id):
 
     sales_history = c.fetchall()
 
+    c.execute("""
+        SELECT
+            id,
+            prescription_date,
+            prescription_type,
+            r_dist_sph,
+            r_dist_cyl,
+            r_dist_axis,
+            l_dist_sph,
+            l_dist_cyl,
+            l_dist_axis
+        FROM prescriptions
+        WHERE customer_id=%s
+        AND company_code=%s
+        ORDER BY prescription_date DESC, id DESC
+    """, (customer_id, session["company_code"]))
+
+    prescriptions = c.fetchall()
+
+    prescription_rows = ""
+
+    for p in prescriptions:
+        prescription_rows += f"""
+        <tr>
+            <td>{p[1]}</td>
+            <td>{p[2] or ''}</td>
+            <td>R: {p[3] or ''} / {p[4] or ''} / {p[5] or ''}</td>
+            <td>L: {p[6] or ''} / {p[7] or ''} / {p[8] or ''}</td>
+            <td><a href="/view-prescription/{p[0]}">View</a></td>
+        </tr>
+        """
+
     sales_rows = ""
 
     for sale in sales_history:
@@ -4499,7 +4604,24 @@ def customer_profile(customer_id):
 
     <h2>Prescription History</h2>
 
-    <p>No prescription records.</p>
+    <a href="/add-prescription/{customer_id}">
+        <button>Add Prescription</button>
+    </a>
+
+    <br><br>
+
+    <table border="1" cellpadding="8">
+        <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Right Eye</th>
+            <th>Left Eye</th>
+            <th>Action</th>
+        </tr>
+
+        {prescription_rows}
+
+</table>
 
     <br>
 
@@ -4520,6 +4642,204 @@ def customer_profile(customer_id):
     <a href="/edit-customer/{customer_id}">
         <button>Edit Customer</button>
     </a>
+    """
+
+@app.route("/add-prescription/<int:customer_id>", methods=["GET", "POST"])
+def add_prescription(customer_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT customer_name
+        FROM customers
+        WHERE id=%s AND company_code=%s
+    """, (customer_id, session["company_code"]))
+
+    customer = c.fetchone()
+
+    if not customer:
+        conn.close()
+        return "Customer not found"
+
+    if request.method == "POST":
+
+        fields = [
+            "rx_ref", "prescription_date", "prescription_type",
+
+            "r_dist_sph", "r_dist_cyl", "r_dist_axis", "r_dist_va", "r_dist_prism", "r_dist_add",
+            "r_read_sph", "r_read_cyl", "r_read_axis", "r_read_va", "r_read_prism", "r_read_add",
+            "r_former_sph", "r_former_cyl", "r_former_axis", "r_former_va", "r_former_prism", "r_former_add",
+            "r_pd_dist", "r_near_dist", "r_p_height", "r_seg_height",
+
+            "l_dist_sph", "l_dist_cyl", "l_dist_axis", "l_dist_va", "l_dist_prism", "l_dist_add",
+            "l_read_sph", "l_read_cyl", "l_read_axis", "l_read_va", "l_read_prism", "l_read_add",
+            "l_former_sph", "l_former_cyl", "l_former_axis", "l_former_va", "l_former_prism", "l_former_add",
+            "l_pd_dist", "l_near_dist", "l_p_height", "l_seg_height",
+
+            "lens_type", "fr_sg", "memo", "l_cor", "model", "deposit"
+        ]
+
+        values = [request.form.get(f, "").strip() for f in fields]
+
+        c.execute(f"""
+            INSERT INTO prescriptions (
+                company_code,
+                customer_id,
+                {",".join(fields)}
+            )
+            VALUES (
+                %s, %s,
+                {",".join(["%s"] * len(fields))}
+            )
+        """, (
+            session["company_code"],
+            customer_id,
+            *values
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return redirect(f"/customer-profile/{customer_id}")
+
+    conn.close()
+
+    return f"""
+    <h1>Add Prescription</h1>
+    <h2>{customer[0]}</h2>
+
+    <form method="POST">
+
+        <label>RX Ref:</label>
+        <input type="text" name="rx_ref">
+
+        <label>Date:</label>
+        <input type="date" name="prescription_date" value="{datetime.now().strftime('%Y-%m-%d')}">
+
+        <label>Type:</label>
+        <select name="prescription_type">
+            <option>Single Vision</option>
+            <option>Progressive</option>
+            <option>Reading</option>
+            <option>Contact Lens</option>
+        </select>
+
+        <hr>
+
+        <h2>Right Eye</h2>
+
+        <table border="1" cellpadding="5">
+            <tr>
+                <th></th><th>SPH</th><th>CYL</th><th>AXIS</th><th>V/A</th><th>Prism</th><th>Add</th>
+            </tr>
+            <tr>
+                <td>Dist</td>
+                <td><input name="r_dist_sph"></td>
+                <td><input name="r_dist_cyl"></td>
+                <td><input name="r_dist_axis"></td>
+                <td><input name="r_dist_va"></td>
+                <td><input name="r_dist_prism"></td>
+                <td><input name="r_dist_add"></td>
+            </tr>
+            <tr>
+                <td>Read</td>
+                <td><input name="r_read_sph"></td>
+                <td><input name="r_read_cyl"></td>
+                <td><input name="r_read_axis"></td>
+                <td><input name="r_read_va"></td>
+                <td><input name="r_read_prism"></td>
+                <td><input name="r_read_add"></td>
+            </tr>
+            <tr>
+                <td>Former</td>
+                <td><input name="r_former_sph"></td>
+                <td><input name="r_former_cyl"></td>
+                <td><input name="r_former_axis"></td>
+                <td><input name="r_former_va"></td>
+                <td><input name="r_former_prism"></td>
+                <td><input name="r_former_add"></td>
+            </tr>
+        </table>
+
+        <br>
+        PD Dist: <input name="r_pd_dist">
+        Near Dist: <input name="r_near_dist">
+        P. Height: <input name="r_p_height">
+        Seg. Height: <input name="r_seg_height">
+
+        <hr>
+
+        <h2>Left Eye</h2>
+
+        <table border="1" cellpadding="5">
+            <tr>
+                <th></th><th>SPH</th><th>CYL</th><th>AXIS</th><th>V/A</th><th>Prism</th><th>Add</th>
+            </tr>
+            <tr>
+                <td>Dist</td>
+                <td><input name="l_dist_sph"></td>
+                <td><input name="l_dist_cyl"></td>
+                <td><input name="l_dist_axis"></td>
+                <td><input name="l_dist_va"></td>
+                <td><input name="l_dist_prism"></td>
+                <td><input name="l_dist_add"></td>
+            </tr>
+            <tr>
+                <td>Read</td>
+                <td><input name="l_read_sph"></td>
+                <td><input name="l_read_cyl"></td>
+                <td><input name="l_read_axis"></td>
+                <td><input name="l_read_va"></td>
+                <td><input name="l_read_prism"></td>
+                <td><input name="l_read_add"></td>
+            </tr>
+            <tr>
+                <td>Former</td>
+                <td><input name="l_former_sph"></td>
+                <td><input name="l_former_cyl"></td>
+                <td><input name="l_former_axis"></td>
+                <td><input name="l_former_va"></td>
+                <td><input name="l_former_prism"></td>
+                <td><input name="l_former_add"></td>
+            </tr>
+        </table>
+
+        <br>
+        PD Dist: <input name="l_pd_dist">
+        Near Dist: <input name="l_near_dist">
+        P. Height: <input name="l_p_height">
+        Seg. Height: <input name="l_seg_height">
+
+        <hr>
+
+        Lens Type:<br>
+        <input name="lens_type"><br><br>
+
+        FR / SG:<br>
+        <input name="fr_sg"><br><br>
+
+        Memo:<br>
+        <textarea name="memo"></textarea><br><br>
+
+        L. COR:<br>
+        <input name="l_cor"><br><br>
+
+        Model:<br>
+        <input name="model"><br><br>
+
+        Deposit:<br>
+        <input type="number" step="0.01" name="deposit" value="0"><br><br>
+
+        <button type="submit">Save Prescription</button>
+        <a href="/customer-profile/{customer_id}">
+            <button type="button">Cancel</button>
+        </a>
+
+    </form>
     """
 
 @app.route("/edit-customer/<int:customer_id>", methods=["GET", "POST"])

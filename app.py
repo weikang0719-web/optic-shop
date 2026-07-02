@@ -4516,6 +4516,150 @@ def customer_profile(customer_id):
     <a href="/">
         <button>Dashboard</button>
     </a>
+
+    <a href="/edit-customer/{customer_id}">
+        <button>Edit Customer</button>
+    </a>
+    """
+
+@app.route("/edit-customer/<int:customer_id>", methods=["GET", "POST"])
+def edit_customer(customer_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    if request.method == "POST":
+        customer_name = request.form["customer_name"].strip()
+        phone = request.form["phone"].strip()
+        ic_passport = request.form["ic_passport"].strip()
+        birthday = request.form["birthday"]
+        gender = request.form["gender"]
+        address = request.form["address"].strip()
+        email = request.form["email"].strip()
+        remark = request.form["remark"].strip()
+
+        if ic_passport:
+            c.execute("""
+                SELECT id, customer_code, customer_name
+                FROM customers
+                WHERE company_code=%s
+                AND ic_passport=%s
+                AND id<>%s
+            """, (session["company_code"], ic_passport, customer_id))
+
+            existing_customer = c.fetchone()
+
+            if existing_customer:
+                conn.close()
+                return f"""
+                <script>
+                    alert('This IC already belongs to: {existing_customer[2]} ({existing_customer[1]})');
+                    window.location.href='/customer-profile/{existing_customer[0]}';
+                </script>
+                """
+
+        c.execute("""
+            UPDATE customers
+            SET customer_name=%s,
+                phone=%s,
+                ic_passport=%s,
+                birthday=%s,
+                gender=%s,
+                address=%s,
+                email=%s,
+                remark=%s
+            WHERE id=%s
+            AND company_code=%s
+        """, (
+            customer_name,
+            phone,
+            ic_passport,
+            birthday if birthday else None,
+            gender,
+            address,
+            email,
+            remark,
+            customer_id,
+            session["company_code"]
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return redirect(f"/customer-profile/{customer_id}")
+
+    c.execute("""
+        SELECT
+            customer_code,
+            customer_name,
+            phone,
+            ic_passport,
+            birthday,
+            gender,
+            address,
+            email,
+            remark
+        FROM customers
+        WHERE id=%s
+        AND company_code=%s
+    """, (customer_id, session["company_code"]))
+
+    customer = c.fetchone()
+    conn.close()
+
+    if not customer:
+        return "Customer not found"
+
+    birthday_value = customer[4] or ""
+
+    male_selected = "selected" if customer[5] == "Male" else ""
+    female_selected = "selected" if customer[5] == "Female" else ""
+
+    return f"""
+    <h1>Edit Customer</h1>
+
+    <form method="POST">
+
+        <p><b>Customer Code:</b> {customer[0]}</p>
+
+        <label>Customer Name</label><br>
+        <input type="text" name="customer_name" value="{customer[1] or ''}" required><br><br>
+
+        <label>Phone</label><br>
+        <input type="text" name="phone" value="{customer[2] or ''}"><br><br>
+
+        <label>IC / Passport</label><br>
+        <input type="text" name="ic_passport" value="{customer[3] or ''}"><br><br>
+
+        <label>Birthday</label><br>
+        <input type="date" name="birthday" value="{birthday_value}"><br><br>
+
+        <label>Gender</label><br>
+        <select name="gender">
+            <option value="">Select</option>
+            <option value="Male" {male_selected}>Male</option>
+            <option value="Female" {female_selected}>Female</option>
+        </select><br><br>
+
+        <label>Address</label><br>
+        <textarea name="address">{customer[6] or ''}</textarea><br><br>
+
+        <label>Email</label><br>
+        <input type="email" name="email" value="{customer[7] or ''}"><br><br>
+
+        <label>Remark</label><br>
+        <textarea name="remark">{customer[8] or ''}</textarea><br><br>
+
+        <button type="submit">Update Customer</button>
+
+        <a href="/customer-profile/{customer_id}">
+            <button type="button">Cancel</button>
+        </a>
+
+    </form>
     """
 
 @app.route("/stock-movement", methods=["GET", "POST"])

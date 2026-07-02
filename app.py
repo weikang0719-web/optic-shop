@@ -4842,6 +4842,108 @@ def add_prescription(customer_id):
     </form>
     """
 
+@app.route("/view-prescription/<int:prescription_id>")
+def view_prescription(prescription_id):
+
+    if not session.get("logged_in"):
+        return redirect("/login")
+
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT p.*, c.customer_name
+        FROM prescriptions p
+        JOIN customers c ON p.customer_id = c.id
+        WHERE p.id=%s
+        AND p.company_code=%s
+    """, (prescription_id, session["company_code"]))
+
+    p = c.fetchone()
+    conn.close()
+
+    if not p:
+        return "Prescription not found"
+
+    customer_name = p[-1]
+
+    return f"""
+    <h1>Prescription Detail</h1>
+    <h2>{customer_name}</h2>
+
+    <p><b>Date:</b> {p[4]}</p>
+    <p><b>Type:</b> {p[5] or ''}</p>
+    <p><b>RX Ref:</b> {p[3] or ''}</p>
+
+    <h2>Right Eye</h2>
+    <table border="1" cellpadding="8">
+        <tr>
+            <th></th><th>SPH</th><th>CYL</th><th>AXIS</th><th>V/A</th><th>Prism</th><th>Add</th>
+        </tr>
+        <tr>
+            <td>Dist</td>
+            <td>{p[6] or ''}</td><td>{p[7] or ''}</td><td>{p[8] or ''}</td>
+            <td>{p[9] or ''}</td><td>{p[10] or ''}</td><td>{p[11] or ''}</td>
+        </tr>
+        <tr>
+            <td>Read</td>
+            <td>{p[12] or ''}</td><td>{p[13] or ''}</td><td>{p[14] or ''}</td>
+            <td>{p[15] or ''}</td><td>{p[16] or ''}</td><td>{p[17] or ''}</td>
+        </tr>
+        <tr>
+            <td>Former</td>
+            <td>{p[18] or ''}</td><td>{p[19] or ''}</td><td>{p[20] or ''}</td>
+            <td>{p[21] or ''}</td><td>{p[22] or ''}</td><td>{p[23] or ''}</td>
+        </tr>
+    </table>
+
+    <p><b>Right PD Dist:</b> {p[24] or ''}</p>
+    <p><b>Right Near Dist:</b> {p[25] or ''}</p>
+    <p><b>Right P. Height:</b> {p[26] or ''}</p>
+    <p><b>Right Seg. Height:</b> {p[27] or ''}</p>
+
+    <h2>Left Eye</h2>
+    <table border="1" cellpadding="8">
+        <tr>
+            <th></th><th>SPH</th><th>CYL</th><th>AXIS</th><th>V/A</th><th>Prism</th><th>Add</th>
+        </tr>
+        <tr>
+            <td>Dist</td>
+            <td>{p[28] or ''}</td><td>{p[29] or ''}</td><td>{p[30] or ''}</td>
+            <td>{p[31] or ''}</td><td>{p[32] or ''}</td><td>{p[33] or ''}</td>
+        </tr>
+        <tr>
+            <td>Read</td>
+            <td>{p[34] or ''}</td><td>{p[35] or ''}</td><td>{p[36] or ''}</td>
+            <td>{p[37] or ''}</td><td>{p[38] or ''}</td><td>{p[39] or ''}</td>
+        </tr>
+        <tr>
+            <td>Former</td>
+            <td>{p[40] or ''}</td><td>{p[41] or ''}</td><td>{p[42] or ''}</td>
+            <td>{p[43] or ''}</td><td>{p[44] or ''}</td><td>{p[45] or ''}</td>
+        </tr>
+    </table>
+
+    <p><b>Left PD Dist:</b> {p[46] or ''}</p>
+    <p><b>Left Near Dist:</b> {p[47] or ''}</p>
+    <p><b>Left P. Height:</b> {p[48] or ''}</p>
+    <p><b>Left Seg. Height:</b> {p[49] or ''}</p>
+
+    <hr>
+
+    <p><b>Lens Type:</b> {p[50] or ''}</p>
+    <p><b>FR / SG:</b> {p[51] or ''}</p>
+    <p><b>Memo:</b> {p[52] or ''}</p>
+    <p><b>L. COR:</b> {p[53] or ''}</p>
+    <p><b>Model:</b> {p[54] or ''}</p>
+    <p><b>Deposit:</b> RM {float(p[55] or 0):.2f}</p>
+
+    <br>
+    <a href="/customer-profile/{p[2]}">
+        <button>Back Customer Profile</button>
+    </a>
+    """
+
 @app.route("/edit-customer/<int:customer_id>", methods=["GET", "POST"])
 def edit_customer(customer_id):
 
